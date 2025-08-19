@@ -1,0 +1,71 @@
+# 操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+logs/
+
+# 运行时文件
+*.pid
+*.seed
+*.pid.lock
+
+# 依赖目录
+node_modules/
+vendor/
+
+# 构建输出
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 编译文件
+*.o
+*.so
+*.dylib
+*.exe
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# 数据库文件
+*.sqlite
+*.sqlite3
+*.db
+
+# 配置文件（如果包含敏感信息）
+config/local.json
+config/production.json
