@@ -1,6 +1,15 @@
 # GUI 依赖 (Python 内置)
 # tkinter 是 Python 内置模块
 
+# 音效播放
+pygame>=2.5.0
+
+# 图像处理和界面美化
+Pillow>=9.0.0
+
+# 现代化主题 (可选)
+ttkthemes>=3.2.2
+
 # 打包工具
 pyinstaller>=5.10.1
 
