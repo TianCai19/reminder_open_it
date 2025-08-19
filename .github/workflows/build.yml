@@ -56,18 +56,33 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          $iconArg = ""
-          if (Test-Path assets/icon.ico) { $iconArg = "--icon assets/icon.ico" }
-          $addData = ""
-          if (Test-Path assets/sun-valley.tcl) { $addData = "--add-data `"assets/sun-valley.tcl;.`"" }
-          pyinstaller `
-            --name NotionReminder `
-            --windowed `
-            --noconfirm `
-            $iconArg `
-            $addData `
-            notion_reminder_gui.py
-          Compress-Archive -Path "dist/NotionReminder/*" -DestinationPath "NotionReminder-Windows.zip"
+          # 构建基本命令
+          $cmd = @(
+            "pyinstaller",
+            "--name", "NotionReminder",
+            "--windowed",
+            "--noconfirm",
+            "--onefile"
+          )
+          
+          # 检查并添加图标
+          if (Test-Path "assets/icon.ico") {
+            $cmd += "--icon", "assets/icon.ico"
+          }
+          
+          # 检查并添加数据文件
+          if (Test-Path "assets/sun-valley.tcl") {
+            $cmd += "--add-data", "assets/sun-valley.tcl;."
+          }
+          
+          # 添加主脚本
+          $cmd += "notion_reminder_gui.py"
+          
+          # 执行构建命令
+          & $cmd[0] $cmd[1..($cmd.Length-1)]
+          
+          # 压缩可执行文件
+          Compress-Archive -Path "dist/NotionReminder.exe" -DestinationPath "NotionReminder-Windows.zip"
       - name: Upload artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
