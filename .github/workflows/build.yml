@@ -1,5 +1,10 @@
 name: Build NotionReminder Apps
 
+# 添加必要的权限
+permissions:
+  contents: write    # 允许创建 release 和上传文件
+  actions: read      # 允许读取 actions
+
 on:
   push:
     branches: [ main ]
