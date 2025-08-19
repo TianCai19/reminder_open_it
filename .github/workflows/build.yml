@@ -3,13 +3,10 @@ name: Build NotionReminder Apps
 on:
   push:
     branches: [ main ]
-    paths:
-      - "**.py"
-      - "assets/**"
-      - ".github/workflows/build.yml"
+    tags: [ 'v*' ]          # ✅ 放到 push 下面
   pull_request:
-  tags:
-    - "v*"
+    branches: [ main ]
+  workflow_dispatch:        # 手动触发（可选）
 
 jobs:
   build:
@@ -18,14 +15,12 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
-        python-version: ["3.11"]
+        python-version: [ '3.11' ]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -34,7 +29,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      # 可选：如果你有第三方主题文件，放在 assets/ 里一起带上
       - name: Build with PyInstaller (macOS)
         if: matrix.os == 'macos-latest'
         shell: bash
@@ -50,8 +44,13 @@ jobs:
             $ICON_ARG \
             $ADD_DATA \
             notion_reminder_gui.py
-          # 产物标准化为 zip
           ditto -c -k --sequesterRsrc --keepParent "dist/NotionReminder.app" "NotionReminder-macOS.zip"
+      - name: Upload artifact (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NotionReminder-macOS
+          path: NotionReminder-macOS.zip
 
       - name: Build with PyInstaller (Windows)
         if: matrix.os == 'windows-latest'
@@ -69,22 +68,12 @@ jobs:
             $addData `
             notion_reminder_gui.py
           Compress-Archive -Path "dist/NotionReminder/*" -DestinationPath "NotionReminder-Windows.zip"
-
-      - name: Upload artifact (macOS)
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: NotionReminder-macOS
-          path: NotionReminder-macOS.zip
-          if-no-files-found: error
-
       - name: Upload artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: NotionReminder-Windows
           path: NotionReminder-Windows.zip
-          if-no-files-found: error
 
   release:
     name: Release on tag
@@ -92,17 +81,13 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/NotionReminder-macOS/NotionReminder-macOS.zip
             artifacts/NotionReminder-Windows/NotionReminder-Windows.zip
           draft: false
           prerelease: false
-
