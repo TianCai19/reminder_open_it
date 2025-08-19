@@ -84,3 +84,17 @@ pyinstaller --onefile --windowed --name NotionReminder notion_reminder_gui.py
 2. 标签推送会立即触发构建，请谨慎操作
 3. 构建时间约 10-15 分钟（三个平台并行）
 4. 发布的文件会自动出现在 GitHub Releases 页面
+5. macOS 版本使用 `.icns` 图标，Windows 和 Linux 版本不使用图标以避免兼容性问题
+
+## 🔧 故障排除
+
+### 常见问题及解决方案
+
+1. **构建失败：`deprecated version of actions/upload-artifact`**
+   - 已修复：更新至 `actions/upload-artifact@v4`
+
+2. **Windows 构建失败：图标格式问题**
+   - 已修复：Windows 和 Linux 构建不再使用 `.icns` 图标文件
+
+3. **Release 创建失败**
+   - 已修复：使用现代的 `softprops/action-gh-release@v1` 动作
