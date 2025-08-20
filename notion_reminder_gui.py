@@ -46,7 +46,7 @@ DEFAULTS = {
     "subseq_min": 15,
     "chrome_path": "",
     "sound_enabled": True,
-    "sound_file": "",
+    "sound_file": "default_reminder.mp3",
     "theme": "equilux"
 }
 
@@ -69,11 +69,16 @@ class SoundManager:
             return
             
         try:
+            # 优先使用指定的音效文件
             if sound_file and os.path.exists(sound_file):
                 pygame.mixer.music.load(sound_file)
                 pygame.mixer.music.play()
+            # 其次尝试使用默认的提醒音效
+            elif os.path.exists("default_reminder.mp3"):
+                pygame.mixer.music.load("default_reminder.mp3")
+                pygame.mixer.music.play()
             else:
-                # 播放系统默认提示音
+                # 最后使用系统默认提示音
                 # 在macOS上可以使用系统命令
                 if sys.platform == 'darwin':
                     os.system('afplay /System/Library/Sounds/Glass.aiff')
