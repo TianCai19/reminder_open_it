@@ -10,6 +10,9 @@ Pillow>=9.0.0
 # 现代化主题 (可选)
 ttkthemes>=3.2.2
 
+# PyQt 版本
+PyQt5>=5.15.0
+
 # 打包工具
 pyinstaller>=5.10.1
 

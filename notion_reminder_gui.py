@@ -10,6 +10,8 @@ from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 import json
 import threading
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 # 音效支持
 try:
@@ -118,12 +120,59 @@ class ConfigManager:
         except Exception as e:
             print(f"保存配置失败: {e}")
 
+class HistoryManager:
+    """提醒历史记录管理器"""
+    def __init__(self, max_records=500):
+        self.history_file = Path(__file__).parent / "history.json"
+        self.max_records = max_records
+        self.records = []
+        self.load_records()
+
+    def load_records(self):
+        """加载历史记录"""
+        try:
+            if self.history_file.exists():
+                with open(self.history_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    self.records = data[-self.max_records:]
+                else:
+                    self.records = []
+            else:
+                self.records = []
+        except Exception as e:
+            print(f"加载提醒记录失败: {e}")
+            self.records = []
+        return self.records
+
+    def add_record(self, record):
+        """追加一条记录并持久化"""
+        self.records.append(record)
+        if len(self.records) > self.max_records:
+            self.records = self.records[-self.max_records:]
+        self._save()
+        return self.records
+
+    def clear_records(self):
+        """清空所有记录"""
+        self.records = []
+        self._save()
+        return self.records
+
+    def _save(self):
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(self.records, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"保存提醒记录失败: {e}")
+
 class ReminderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("📋 智能提醒助手 - Enhanced")
-        self.root.geometry("800x650")
-        self.root.minsize(700, 600)
+        self.root.geometry("850x780")
+        self.root.minsize(720, 650)
+        self.section_states = {}
         
         # 设置应用图标（如果可用）
         try:
@@ -135,6 +184,7 @@ class ReminderApp:
         # 初始化管理器
         self.sound_manager = SoundManager()
         self.config_manager = ConfigManager()
+        self.history_manager = HistoryManager()
         
         # 加载配置
         self.config = self.config_manager.load_config()
@@ -154,6 +204,7 @@ class ReminderApp:
         # 构建UI
         self._build_ui()
         self._load_settings()
+        self._refresh_history_view()
         
         # 绑定窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -178,6 +229,38 @@ class ReminderApp:
             
         # 自定义样式
         self._setup_custom_styles()
+
+    def _register_section(self, name, content_widget, toggle_btn):
+        """注册可折叠区域"""
+        pack_opts = content_widget.pack_info()
+        pack_opts.pop("in", None)
+        self.section_states[name] = {
+            "content": content_widget,
+            "toggle_btn": toggle_btn,
+            "pack_opts": pack_opts,
+            "collapsed": False
+        }
+
+    def _set_section_collapsed(self, name, collapsed=True):
+        state = self.section_states.get(name)
+        if not state:
+            return
+        content = state["content"]
+        btn = state["toggle_btn"]
+        if collapsed:
+            content.pack_forget()
+            btn.config(text="展开 ▸")
+        else:
+            if not content.winfo_ismapped():
+                content.pack(**state["pack_opts"])
+            btn.config(text="折叠 ▾")
+        state["collapsed"] = collapsed
+
+    def _toggle_section(self, name):
+        state = self.section_states.get(name)
+        if not state:
+            return
+        self._set_section_collapsed(name, not state["collapsed"])
         
     def _setup_custom_styles(self):
         """设置自定义样式"""
@@ -227,6 +310,9 @@ class ReminderApp:
         # 状态显示区域
         self._create_status_section(main_container)
         
+        # 历史记录与习惯区域
+        self._create_history_section(main_container)
+        
         # 音效设置区域
         self._create_sound_section(main_container)
         
@@ -259,9 +345,23 @@ class ReminderApp:
         """创建配置区域"""
         config_frame = ttk.LabelFrame(parent, text="📝 基础配置", padding=15)
         config_frame.pack(fill="x", pady=(0, 15))
+
+        header_row = ttk.Frame(config_frame)
+        header_row.pack(fill="x")
+        ttk.Label(header_row, text="开始后自动折叠，可随时展开修改").pack(side="left")
+        config_toggle = ttk.Button(
+            header_row,
+            text="折叠 ▾",
+            command=lambda: self._toggle_section("config"),
+            width=10
+        )
+        config_toggle.pack(side="right")
+
+        content = ttk.Frame(config_frame)
+        content.pack(fill="x")
         
         # URL配置
-        url_frame = ttk.Frame(config_frame)
+        url_frame = ttk.Frame(content)
         url_frame.pack(fill="x", pady=(0, 10))
         
         ttk.Label(url_frame, text="目标网址：").pack(anchor="w")
@@ -270,7 +370,7 @@ class ReminderApp:
         url_entry.pack(fill="x", pady=(5, 0))
         
         # Chrome路径配置
-        chrome_frame = ttk.Frame(config_frame)
+        chrome_frame = ttk.Frame(content)
         chrome_frame.pack(fill="x", pady=(0, 10))
         
         chrome_label_frame = ttk.Frame(chrome_frame)
@@ -291,7 +391,7 @@ class ReminderApp:
         chrome_entry.pack(fill="x", pady=(5, 0))
         
         # 时间配置
-        time_frame = ttk.Frame(config_frame)
+        time_frame = ttk.Frame(content)
         time_frame.pack(fill="x")
         
         # 第一行：总时长
@@ -321,6 +421,9 @@ class ReminderApp:
         self.subseq_var = tk.StringVar()
         ttk.Entry(time_row2, textvariable=self.subseq_var, width=6).pack(side="left", padx=(5, 2))
         ttk.Label(time_row2, text="分").pack(side="left")
+
+        # 注册可折叠区域
+        self._register_section("config", content_widget=content, toggle_btn=config_toggle)
         
     def _create_control_section(self, parent):
         """创建控制区域"""
@@ -407,14 +510,78 @@ class ReminderApp:
         
         self.elapsed_var = tk.StringVar(value="已用时：0:00 / 1:00")
         ttk.Label(left_stats, textvariable=self.elapsed_var).pack(anchor="w")
+
+    def _create_history_section(self, parent):
+        """创建历史记录与绿色方块区域"""
+        history_frame = ttk.LabelFrame(parent, text="📜 提醒记录与习惯", padding=12)
+        history_frame.pack(fill="both", expand=True, pady=(0, 15))
+
+        ttk.Label(
+            history_frame,
+            text="今天24小时提醒热力：每小时提醒次数越多，颜色越深。",
+            font=('Helvetica', 9)
+        ).pack(anchor="w")
+
+        canvas_frame = ttk.Frame(history_frame)
+        canvas_frame.pack(fill="x", pady=(5, 10))
+
+        self.contribution_canvas = tk.Canvas(
+            canvas_frame,
+            height=200,
+            highlightthickness=0,
+            background=self.root.cget("background")
+        )
+        self.contribution_canvas.pack(fill="x")
+        self.contribution_canvas.bind("<Configure>", self._render_contribution_grid)
+
+        table_header = ttk.Frame(history_frame)
+        table_header.pack(fill="x", pady=(0, 5))
+        ttk.Label(table_header, text="最近提醒记录").pack(side="left")
+        clear_btn = ttk.Button(
+            table_header,
+            text="🧹 清空记录",
+            command=self._clear_history,
+            width=12
+        )
+        clear_btn.pack(side="right")
+
+        tree_frame = ttk.Frame(history_frame)
+        tree_frame.pack(fill="both", expand=True)
+
+        columns = ("time", "result")
+        self.history_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=7)
+        self.history_tree.heading("time", text="时间")
+        self.history_tree.heading("result", text="结果 / 链接")
+        self.history_tree.column("time", width=190, anchor="w")
+        self.history_tree.column("result", anchor="w")
+        
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.history_tree.yview)
+        self.history_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.history_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
         
     def _create_sound_section(self, parent):
         """创建音效设置区域"""
         sound_frame = ttk.LabelFrame(parent, text="🔊 音效设置", padding=10)
         sound_frame.pack(fill="x")
+
+        header_row = ttk.Frame(sound_frame)
+        header_row.pack(fill="x")
+        ttk.Label(header_row, text="需要时展开修改音效选项").pack(side="left")
+        sound_toggle = ttk.Button(
+            header_row,
+            text="折叠 ▾",
+            command=lambda: self._toggle_section("sound"),
+            width=10
+        )
+        sound_toggle.pack(side="right")
+
+        content = ttk.Frame(sound_frame)
+        content.pack(fill="x")
         
         # 音效开关
-        sound_control_frame = ttk.Frame(sound_frame)
+        sound_control_frame = ttk.Frame(content)
         sound_control_frame.pack(fill="x", pady=(0, 10))
         
         self.sound_enabled_var = tk.BooleanVar()
@@ -436,7 +603,7 @@ class ReminderApp:
         test_sound_btn.pack(side="right")
         
         # 自定义音效文件
-        sound_file_frame = ttk.Frame(sound_frame)
+        sound_file_frame = ttk.Frame(content)
         sound_file_frame.pack(fill="x")
         
         sound_file_label_frame = ttk.Frame(sound_file_frame)
@@ -455,6 +622,8 @@ class ReminderApp:
         self.sound_file_var = tk.StringVar()
         sound_file_entry = ttk.Entry(sound_file_frame, textvariable=self.sound_file_var, font=('Helvetica', 9))
         sound_file_entry.pack(fill="x", pady=(5, 0))
+
+        self._register_section("sound", content_widget=content, toggle_btn=sound_toggle)
         
     def _browse_chrome(self):
         """浏览选择Chrome浏览器路径"""
@@ -541,6 +710,136 @@ class ReminderApp:
             messagebox.showerror("错误", "配置格式错误，请检查数值输入")
         except Exception as e:
             messagebox.showerror("错误", f"保存配置失败：{str(e)}")
+
+    def _clear_history(self):
+        """清空历史记录"""
+        if not messagebox.askyesno("确认", "确定要清空所有提醒记录吗？"):
+            return
+        self.history_manager.clear_records()
+        self._refresh_history_view()
+
+    def _refresh_history_view(self, event=None):
+        """刷新历史记录列表和绿色方块"""
+        if not hasattr(self, "history_tree"):
+            return
+
+        for item in self.history_tree.get_children():
+            self.history_tree.delete(item)
+
+        recent_records = list(self.history_manager.records)[-12:]
+        for record in reversed(recent_records):
+            ts = self._format_timestamp(record.get("timestamp"))
+            status = record.get("status", "success")
+            prefix = "✅" if status == "success" else "⚠️"
+            detail = record.get("url") or "提醒已触发"
+            detail = self._shorten_text(detail, 55)
+            self.history_tree.insert("", "end", values=(ts, f"{prefix} {detail}"))
+
+        self._render_contribution_grid()
+
+    def _render_contribution_grid(self, event=None):
+        """绘制当天按小时的绿色方块"""
+        canvas = getattr(self, "contribution_canvas", None)
+        if not canvas:
+            return
+
+        canvas.delete("all")
+        hours = 24
+        cell = 18
+        gap = 6
+        width = hours * (cell + gap) - gap
+
+        canvas_width = max(canvas.winfo_width(), width + 20)
+        offset_x = max(10, (canvas_width - width) // 2)
+        base_y = 30
+
+        palette = ["#ebedf0", "#d2f4d1", "#86e29b", "#3fbf74", "#14834f"]
+
+        today = datetime.now()
+        counts = defaultdict(int)
+        for entry in self.history_manager.records:
+            dt = self._parse_timestamp(entry.get("timestamp"))
+            if not dt or dt.date() != today.date():
+                continue
+            counts[dt.hour] += 1
+
+        def color_for(count):
+            if count == 0:
+                return palette[0]
+            if count == 1:
+                return palette[1]
+            if count <= 3:
+                return palette[2]
+            if count <= 6:
+                return palette[3]
+            return palette[4]
+
+        for hour in range(hours):
+            x0 = offset_x + hour * (cell + gap)
+            y0 = base_y
+            count = counts.get(hour, 0)
+            canvas.create_rectangle(
+                x0, y0, x0 + cell, y0 + cell,
+                fill=color_for(count),
+                outline="#d0d7de"
+            )
+            if hour % 6 == 0 or hour == 23:
+                label = f"{hour:02d}"
+                canvas.create_text(
+                    x0 + cell / 2,
+                    y0 + cell + 12,
+                    text=label,
+                    anchor="n",
+                    fill="#666"
+                )
+
+        canvas.create_text(
+            offset_x,
+            base_y - 12,
+            text=today.strftime("今天 %m-%d"),
+            anchor="w",
+            fill="#666"
+        )
+
+        # 颜色图例
+        legend_y = base_y + cell + 30
+        legend_items = [("0", palette[0]), ("1", palette[1]), ("2-3", palette[2]), ("4-6", palette[3]), ("7+", palette[4])]
+        for idx, (text, color) in enumerate(legend_items):
+            x = offset_x + idx * (cell * 2 + gap * 3)
+            canvas.create_rectangle(x, legend_y, x + cell, legend_y + cell, fill=color, outline="#d0d7de")
+            canvas.create_text(x + cell + 8, legend_y + cell / 2, text=text, anchor="w", fill="#666")
+
+    def _parse_timestamp(self, ts):
+        if not ts:
+            return None
+        try:
+            return datetime.fromisoformat(ts)
+        except Exception:
+            return None
+
+    def _format_timestamp(self, ts):
+        dt = self._parse_timestamp(ts)
+        if not dt:
+            return "--"
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    def _shorten_text(self, text, limit):
+        if not text:
+            return ""
+        if len(text) <= limit:
+            return text
+        return text[:limit - 3] + "..."
+
+    def _record_history_entry(self, success=True):
+        """写入提醒记录并刷新视图"""
+        entry = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "count": self.count,
+            "url": getattr(self, "url", ""),
+            "status": "success" if success else "failed"
+        }
+        self.history_manager.add_record(entry)
+        self._refresh_history_view()
             
     def start(self):
         """启动提醒"""
@@ -592,6 +891,8 @@ class ReminderApp:
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
         self.status_var.set("🟢 运行中...")
+        self._set_section_collapsed("config", True)
+        self._set_section_collapsed("sound", True)
         
         # 立即打开一次
         self._open_now()
@@ -621,11 +922,14 @@ class ReminderApp:
         self.stop_btn.config(state="disabled")
         self.status_var.set("⏹ 已停止")
         self.progress_var.set(0)
+        self._set_section_collapsed("config", False)
+        self._set_section_collapsed("sound", False)
         
     def _open_now(self):
         """立即打开URL"""
         self.count += 1
         self.count_var.set(f"已提醒：{self.count} 次")
+        success = True
         
         try:
             if self.browser:
@@ -643,7 +947,10 @@ class ReminderApp:
                 threading.Thread(target=lambda: self.sound_manager.play_notification(sound_file), daemon=True).start()
                 
         except Exception as e:
+            success = False
             self.status_var.set(f"❌ 打开失败：{str(e)}")
+        finally:
+            self._record_history_entry(success)
             
     def _schedule_next(self):
         """安排下一次提醒"""
