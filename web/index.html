@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reminder Web</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --accent: #22c55e;
+      --accent-2: #10b981;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #1f2937;
+      --danger: #ef4444;
+      --warn: #f97316;
+      --success: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(34,197,94,0.08), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(59,130,246,0.08), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 28px 22px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    main {
+      padding: 0 22px 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .card h3 { margin: 0 0 10px; font-size: 16px; letter-spacing: 0.3px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+    input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    input:focus { outline: 1px solid var(--accent); }
+    .row { display: flex; gap: 8px; align-items: center; }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.18s ease;
+    }
+    button:active { transform: translateY(1px); }
+    .primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0b131d; }
+    .ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #fecdd3; }
+    .pill { padding: 8px 12px; border-radius: 999px; font-size: 13px; }
+    .status-line { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+    .dot.running { background: var(--accent); box-shadow: 0 0 0 6px rgba(34,197,94,0.12); }
+    .dot.stopped { background: var(--danger); }
+    progress { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: var(--card); }
+    progress::-webkit-progress-bar { background: var(--card); }
+    progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table th, .history-table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    .history-table th { color: var(--muted); font-weight: 600; }
+    .tag { padding: 4px 8px; border-radius: 8px; font-size: 12px; display: inline-block; }
+    .tag.success { background: rgba(34,197,94,0.12); color: #bbf7d0; }
+    .tag.failed { background: rgba(239,68,68,0.12); color: #fecdd3; }
+    .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; margin-top: 10px; }
+    .cell { padding-top: 100%; position: relative; border-radius: 6px; border: 1px solid var(--border); }
+    .cell div { position: absolute; inset: 0; border-radius: 6px; }
+    .legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend .box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border); display: inline-block; }
+    .muted { color: var(--muted); }
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 10px 0 18px; }
+    @media (max-width: 720px) {
+      main { grid-template-columns: 1fr; }
+      .heatmap { grid-template-columns: repeat(12, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="title">🚀 Reminder Web</div>
+      <div class="subtitle">渐进间隔提醒 · 本地服务 · 前后端分离</div>
+    </div>
+    <div class="subtitle" id="status-line">状态：待机中</div>
+  </header>
+  <main>
+    <section class="card">
+      <h3>配置</h3>
+      <div class="grid-2">
+        <div>
+          <label>目标网址</label>
+          <input id="url" type="text" placeholder="https://..." />
+        </div>
+        <div>
+          <label>浏览器路径（可选）</label>
+          <input id="chrome" type="text" placeholder="/Applications/Google Chrome.app" />
+        </div>
+        <div>
+          <label>总时长（分钟）</label>
+          <input id="total" type="number" min="1" />
+        </div>
+        <div class="row" style="gap:12px;">
+          <div style="flex:1;">
+            <label>第1次（分）</label>
+            <input id="first" type="number" min="1" />
+          </div>
+          <div style="flex:1;">
+            <label>第2次（分）</label>
+            <input id="second" type="number" min="1" />
+          </div>
+          <div style="flex:1;">
+            <label>后续（分）</label>
+            <input id="subseq" type="number" min="1" />
+          </div>
+        </div>
+        <div class="row" style="align-items:center; gap:10px;">
+          <label style="margin:0;">音效</label>
+          <input id="sound-enabled" type="checkbox" checked />
+          <input id="sound-file" type="text" placeholder="默认音效" style="flex:1;" />
+          <button class="ghost" onclick="testSound()">测试</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px; gap:10px;">
+        <button class="primary" onclick="start()">启动</button>
+        <button class="danger" onclick="stop()">停止</button>
+        <button class="ghost" onclick="saveConfig()">保存配置</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>运行状态</h3>
+      <div class="status-line">
+        <div id="dot" class="dot"></div>
+        <div id="status">待机中</div>
+      </div>
+      <div class="muted" id="next">下次提醒：--:--</div>
+      <div class="muted" id="elapsed">已用时：0:00 / 0:00</div>
+      <div class="muted" id="count">已提醒：0 次</div>
+      <progress id="progress" value="0" max="100"></progress>
+    </section>
+
+    <section class="card">
+      <h3>今日 24 小时热力</h3>
+      <div class="heatmap" id="heatmap"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card" style="grid-column: span 2;">
+      <div class="row" style="justify-content: space-between; align-items: center;">
+        <h3 style="margin:0;">历史记录</h3>
+        <div class="row" style="gap:8px;">
+          <button class="ghost pill" onclick="refreshHistory()">刷新</button>
+          <button class="danger pill" onclick="clearHistory()">清空</button>
+        </div>
+      </div>
+      <table class="history-table" id="history">
+        <thead><tr><th>时间</th><th>状态/链接</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+  <footer>本地运行 · 打开浏览器并播放音效需允许相关权限</footer>
+
+  <script>
+    const palette = ["#1f2937","#164e3b","#15803d","#22c55e","#4ade80"];
+
+    async function api(path, options={}) {
+      const res = await fetch(path, {
+        headers: {"Content-Type": "application/json"},
+        ...options
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function fillConfig(cfg) {
+      document.getElementById('url').value = cfg.url || '';
+      document.getElementById('chrome').value = cfg.chrome_path || '';
+      document.getElementById('total').value = cfg.total_min || 60;
+      document.getElementById('first').value = cfg.first_min || 5;
+      document.getElementById('second').value = cfg.second_min || 10;
+      document.getElementById('subseq').value = cfg.subseq_min || 15;
+      document.getElementById('sound-enabled').checked = cfg.sound_enabled ?? true;
+      document.getElementById('sound-file').value = cfg.sound_file || '';
+    }
+
+    async function loadConfig() {
+      try {
+        const cfg = await api('/api/config');
+        fillConfig(cfg);
+      } catch (e) { console.error(e); }
+    }
+
+    function collectConfig() {
+      return {
+        url: document.getElementById('url').value.trim(),
+        chrome_path: document.getElementById('chrome').value.trim(),
+        total_min: Number(document.getElementById('total').value || 0),
+        first_min: Number(document.getElementById('first').value || 0),
+        second_min: Number(document.getElementById('second').value || 0),
+        subseq_min: Number(document.getElementById('subseq').value || 0),
+        sound_enabled: document.getElementById('sound-enabled').checked,
+        sound_file: document.getElementById('sound-file').value.trim(),
+      };
+    }
+
+    async function saveConfig() {
+      try {
+        await api('/api/config', { method:'POST', body: JSON.stringify(collectConfig()) });
+        toast('配置已保存');
+      } catch (e) { toast('保存失败: '+e.message, true); }
+    }
+
+    async function start() {
+      try {
+        await api('/api/start', { method:'POST', body: JSON.stringify(collectConfig()) });
+        toast('已启动');
+        pollStatus();
+      } catch (e) { toast('启动失败: '+e.message, true); }
+    }
+
+    async function stop() {
+      try { await api('/api/stop', { method:'POST' }); toast('已停止'); }
+      catch (e) { toast('停止失败: '+e.message, true); }
+    }
+
+    async function testSound() {
+      toast('测试音效在后端播放（需允许系统声音）');
+      try { await api('/api/start', { method:'POST', body: JSON.stringify({...collectConfig(), total_min:1, first_min:1, second_min:1, subseq_min:1}) }); } catch {}
+    }
+
+    async function refreshHistory() {
+      try {
+        const data = await api('/api/history');
+        const tbody = document.querySelector('#history tbody');
+        tbody.innerHTML = '';
+        const records = (data.records || []).slice(-50).reverse();
+        records.forEach(r => {
+          const tr = document.createElement('tr');
+          const ts = document.createElement('td');
+          ts.textContent = formatTs(r.timestamp);
+          const status = document.createElement('td');
+          const tag = document.createElement('span');
+          tag.className = 'tag ' + (r.status === 'success' ? 'success' : 'failed');
+          tag.textContent = r.status === 'success' ? '成功' : '失败';
+          status.appendChild(tag);
+          const text = document.createElement('span');
+          text.textContent = ' ' + (r.url || '');
+          status.appendChild(text);
+          tr.appendChild(ts); tr.appendChild(status);
+          tbody.appendChild(tr);
+        });
+        drawHeatmap(records);
+      } catch (e) { console.error(e); }
+    }
+
+    async function clearHistory() {
+      if (!confirm('确定清空所有记录？')) return;
+      await api('/api/history/clear', { method:'POST' });
+      refreshHistory();
+    }
+
+    function formatTs(ts) {
+      if (!ts) return '--';
+      const d = new Date(ts);
+      if (isNaN(d)) return ts;
+      return d.toLocaleString();
+    }
+
+    function drawHeatmap(records) {
+      const container = document.getElementById('heatmap');
+      container.innerHTML = '';
+      const counts = Array(24).fill(0);
+      const today = new Date();
+      const sameDay = (d) => d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+      (records || []).forEach(r => {
+        const d = new Date(r.timestamp);
+        if (!isNaN(d) && sameDay(d)) counts[d.getHours()] += 1;
+      });
+      const colorFor = (c) => {
+        if (c===0) return palette[0];
+        if (c===1) return palette[1];
+        if (c<=3) return palette[2];
+        if (c<=6) return palette[3];
+        return palette[4];
+      };
+      counts.forEach((c,i)=>{
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const inner = document.createElement('div');
+        inner.style.background = colorFor(c);
+        cell.appendChild(inner);
+        cell.title = `${i}:00  - 次数 ${c}`;
+        container.appendChild(cell);
+      });
+      const legend = document.getElementById('legend');
+      legend.innerHTML = '';
+      [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
+        const span = document.createElement('span');
+        const box = document.createElement('span');
+        box.className = 'box';
+        box.style.background = colorFor(val);
+        span.appendChild(box);
+        span.appendChild(document.createTextNode(label));
+        legend.appendChild(span);
+      });
+    }
+
+    async function pollStatus() {
+      try {
+        const s = await api('/api/status');
+        document.getElementById('status').textContent = s.status;
+        document.getElementById('status-line').textContent = `状态：${s.status}`;
+        document.getElementById('count').textContent = `已提醒：${s.count} 次`;
+        document.getElementById('progress').value = s.progress || 0;
+        document.getElementById('dot').className = 'dot ' + (s.running ? 'running' : 'stopped');
+        const mmss = (sec)=>{
+          const m = Math.floor(sec/60), s = sec%60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+        document.getElementById('next').textContent = `下次提醒：${mmss(s.next_in || 0)}`;
+        const total = s.total || 0; const el = s.elapsed || 0;
+        const fmt = (t)=>{const m=Math.floor(t/60), ss=t%60; return `${m}:${String(ss).padStart(2,'0')}`};
+        document.getElementById('elapsed').textContent = `已用时：${fmt(el)} / ${fmt(total)}`;
+      } catch (e) { console.error(e); }
+    }
+
+    function toast(msg, danger=false) {
+      const el = document.createElement('div');
+      el.textContent = msg;
+      el.style.position='fixed'; el.style.bottom='20px'; el.style.right='20px'; el.style.padding='10px 14px';
+      el.style.background = danger ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)';
+      el.style.color = '#0b131d'; el.style.borderRadius='10px'; el.style.boxShadow='0 10px 30px rgba(0,0,0,0.35)';
+      document.body.appendChild(el);
+      setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.4s'; setTimeout(()=>el.remove(), 400); }, 1400);
+    }
+
+    async function init() {
+      await loadConfig();
+      await refreshHistory();
+      pollStatus();
+      setInterval(pollStatus, 1200);
+      setInterval(refreshHistory, 8000);
+    }
+    init();
+  </script>
+</body>
+</html>

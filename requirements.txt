@@ -10,6 +10,11 @@ Pillow>=9.0.0
 # 现代化主题 (可选)
 ttkthemes>=3.2.2
 
+# Web 方案
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
 # 打包工具
 pyinstaller>=5.10.1
 

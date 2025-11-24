@@ -1,38 +1,42 @@
-# reminder_open_it
+# reminder_open_it （Web 版）
 
-智能提醒助手，支持渐进式间隔提醒、音效提示、历史持久化与当天 24 小时热力方块展示。`main` 分支采用 Tk/ttk；`pyqt-rewrite` 分支提供 PyQt 重构版，两套方案互不影响。
+Web 重构版：后端 FastAPI 负责计时与触发提醒，前端纯 HTML/JS 提供现代化 UI。功能保持一致：渐进间隔提醒、音效提示、history.json 持久化、今日 24 小时热力方块、历史表格、配置管理。
 
-## 核心功能（本分支：Tk/ttk）
-- 渐进间隔提醒：第 1/2 次自定义，后续固定间隔，累计到总时长自动停止。
-- 立即打开目标 URL，可指定浏览器路径。
-- 音效提醒（pygame），支持自定义音效文件与测试。
-- history.json 持久化；历史表格 + 今日 24 小时热力方块（Canvas 自绘）。
-- 折叠式体验：运行时自动折叠配置/音效面板，停止后展开。
+## 核心功能
+- 渐进间隔提醒：第 1/2 次自定义，后续固定间隔，到达总时长停止。
+- 后端触发：在本机用 `webbrowser` 打开目标 URL，可选自定义浏览器路径。
+- 音效提示：pygame 播放默认或自定义音效（需本机声音权限）。
+- history.json 持久化：历史表格 + 今日 24 小时热力图（前端绘制）。
+- 前后端分离：API 控制启动/停止/配置/历史，前端每秒轮询状态，8 秒刷新历史。
 
 ## 技术架构
-- UI：Tkinter + ttk，自定义样式；热力方块使用 `Canvas` 绘制。
-- 计时：`root.after` 每秒心跳；管理倒计时、累计时长与提醒次数。
-- 浏览与音效：`webbrowser` 打开 URL；`pygame.mixer` 播放自定义或默认音效，线程触发避免阻塞。
-- 持久化：`config.json` 保存配置；`history.json` 保存时间戳/计数/状态/URL，驱动历史表格与热力图。
-- 文件：`notion_reminder_gui.py`（Tk 主程序）、`history.json`/`config.json`（运行时生成）、`assets/`（资源）。
-
-## 分支与架构权衡
-- Tk/ttk（当前）：轻量、零外部依赖（除了 pygame）；易打包；原生控件外观普通，复杂 UI/动画受限。
-- PyQt（`pyqt-rewrite`）：控件丰富、绘制能力强、外观更现代；依赖体积大；学习/打包成本略高。
-- Web 壳（可选未来方向，如 Tauri/Electron + 本地服务）：UI 自由度最高，前端生态丰富；需要前后端协作与更大运行体积。
+- 后端：FastAPI + uvicorn，REST API（/api/config, /api/start, /api/stop, /api/status, /api/history, /api/history/clear），线程驱动计时与提醒。
+- 计时逻辑：后台线程维护倒计时、累计时长、提醒次数与进度；立即触发首个提醒。
+- 音效/浏览：`webbrowser` 打开 URL；`pygame.mixer` 播放音效（后台线程避免阻塞）。
+- 持久化：`config.json` 与 `history.json` 读写，最大 500 条历史保留。
+- 前端：`web/index.html`，纯原生 HTML/CSS/JS，深色渐变 UI，启动/停止、配置、状态、今日 24h 热力格子、历史表格、清空/刷新操作。
 
 ## 快速开始
 ```bash
-pip install -r requirements.txt          # 安装依赖
-python notion_reminder_gui.py            # 前台运行 Tk 版
-
-# 使用 PyQt 版（在 pyqt-rewrite 分支）
-git checkout pyqt-rewrite
-python notion_reminder_pyqt.py
+pip install -r requirements.txt                # 安装依赖（FastAPI + uvicorn + pygame 等）
+python web_reminder.py                         # 启动本地服务，默认 http://localhost:8000
+# 浏览器打开 http://localhost:8000 即可操作
 ```
 
-## 贡献
-欢迎提交 Issue / PR，或基于不同架构提出改进方案。
+## 文件结构
+- `web_reminder.py`：FastAPI 服务与计时引擎。
+- `web/index.html`：前端页面与交互逻辑。
+- `config.json` / `history.json`：运行时生成/更新的配置与历史（已列入 .gitignore）。
+- 其他分支：`main`（Tk/ttk 版），`pyqt-rewrite`（PyQt 版）。
+
+## 架构权衡
+- Web 版：UI 自由度高、易扩展为多端访问；需本地服务常驻，浏览器自动开新页可能受弹窗策略限制。
+- Tk/ttk：轻量、零外部依赖，原生外观朴素；复杂动画/布局受限。
+- PyQt：外观现代、控件丰富、可自绘；依赖体积较大、学习/打包成本略高。
+
+## 注意
+- 需在有桌面/默认浏览器的环境运行，浏览器可能阻止频繁弹窗，可根据浏览器策略调整或改用通知方案。
+- 音效播放依赖 pygame，如不可用会自动降级为静默。
 
 ## 许可证
 MIT License
