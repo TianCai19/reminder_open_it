@@ -161,6 +161,7 @@
           <button class="primary" onclick="start()">启动</button>
           <button class="danger" onclick="stop()">停止</button>
           <button class="ghost" onclick="saveConfig()">保存配置</button>
+          <button class="ghost" onclick="addNote()">记录本次</button>
         </div>
         <div style="margin-top:12px; color: var(--muted); font-size: 13px;">浏览器将由本机后端打开；音效依赖 pygame。</div>
       </div>
@@ -261,6 +262,7 @@
   <script>
     const palette = ["#1f2937","#164e3b","#15803d","#22c55e","#4ade80"];
     let lastRecords = [];
+    let lastPromptCount = null;
 
     async function api(path, options={}) {
       const res = await fetch(path, {
@@ -344,6 +346,13 @@
         status.appendChild(tag);
         const text = document.createElement('span'); text.textContent = ' ' + (r.url || '');
         status.appendChild(text);
+        if (r.note) {
+          const note = document.createElement('div');
+          note.style.color = '#a5b4fc';
+          note.style.fontSize = '12px';
+          note.textContent = '备注：' + r.note;
+          status.appendChild(note);
+        }
         tr.appendChild(ts); tr.appendChild(status); tbody.appendChild(tr);
       });
     }
@@ -356,6 +365,10 @@
         item.className = 'timeline-item ' + (r.status === 'success' ? 'success' : 'failed');
         const time = document.createElement('div'); time.className = 'time'; time.textContent = formatTs(r.timestamp);
         const url = document.createElement('div'); url.className = 'url'; url.textContent = r.url || '提醒已触发';
+        if (r.note) {
+          const note = document.createElement('div'); note.className = 'url'; note.style.color = '#a5b4fc'; note.textContent = '备注：' + r.note;
+          item.appendChild(note);
+        }
         item.appendChild(time); item.appendChild(url); container.appendChild(item);
       });
     }
@@ -403,6 +416,16 @@
       document.getElementById('stat-success').textContent = total ? `${Math.round((success/total)*100)}%` : '--';
     }
 
+    async function addNote(autoText) {
+      const text = autoText ?? prompt('记录这一段完成了什么？');
+      if (text === null) return;
+      try {
+        await api('/api/history/note', { method:'POST', body: JSON.stringify({note: text}) });
+        toast('备注已保存');
+        refreshHistory();
+      } catch (e) { toast('备注失败: '+e.message, true); }
+    }
+
     async function pollStatus() {
       try {
         const s = await api('/api/status');
@@ -422,6 +445,14 @@
         ring.setAttribute('stroke-dashoffset', offset);
         document.getElementById('progress-text').textContent = `${s.progress||0}%`;
         document.getElementById('stat-count').textContent = `${s.count||0} 次`;
+        // 自动提示填写备注：当最新记录没有备注且状态显示提醒已触发
+        const latest = lastRecords[lastRecords.length - 1];
+        if (latest && !latest.note && s.status && s.status.includes('提醒已触发')) {
+          if (lastPromptCount !== latest.count) {
+            lastPromptCount = latest.count;
+            setTimeout(()=>addNote(), 200);
+          }
+        }
       } catch (e) { console.error(e); }
     }
 

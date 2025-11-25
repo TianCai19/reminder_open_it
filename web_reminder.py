@@ -64,6 +64,10 @@ class ReminderConfig(BaseModel):
         return v
 
 
+class NotePayload(BaseModel):
+    note: str = Field("", max_length=2000)
+
+
 class SoundManager:
     def __init__(self):
         self.enabled = SOUND_AVAILABLE
@@ -137,6 +141,13 @@ class HistoryManager:
             self.records = self.records[-self.max_records :]
         self._persist()
         return self.records
+
+    def update_last_note(self, note: str):
+        if not self.records:
+            return
+        self.records[-1]["note"] = note
+        self._persist()
+        return self.records[-1]
 
     def clear(self):
         self.records = []
@@ -285,6 +296,7 @@ class ReminderEngine:
             "count": self.count,
             "url": self.url,
             "status": "success" if success else "failed",
+            "note": "",
         }
         self.history.add(entry)
 
@@ -353,6 +365,14 @@ def history():
 def clear_history():
     history_mgr.clear()
     return {"ok": True}
+
+
+@app.post("/api/history/note")
+def add_note(payload: NotePayload):
+    if not history_mgr.records:
+        raise HTTPException(status_code=400, detail="暂无提醒记录可添加备注")
+    updated = history_mgr.update_last_note(payload.note.strip())
+    return {"ok": True, "record": updated}
 
 
 @app.get("/")
