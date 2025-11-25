@@ -6,107 +6,166 @@
   <title>Reminder Web</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --card: #1f2937;
-      --accent: #22c55e;
-      --accent-2: #10b981;
+      --bg: #050915;
+      --card: rgba(12, 17, 31, 0.82);
+      --panel: rgba(18, 26, 46, 0.76);
+      --border: rgba(255, 255, 255, 0.07);
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --accent-3: #38bdf8;
       --text: #e5e7eb;
       --muted: #94a3b8;
-      --border: #1f2937;
       --danger: #ef4444;
-      --warn: #f97316;
       --success: #22c55e;
+      --warning: #f59e0b;
+      --shadow: 0 20px 70px rgba(0,0,0,0.45);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(34,197,94,0.08), transparent 30%),
-                  radial-gradient(circle at 80% 0%, rgba(59,130,246,0.08), transparent 25%),
-                  var(--bg);
+      background: radial-gradient(circle at 15% 20%, rgba(124,58,237,0.15), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(34,197,94,0.15), transparent 22%),
+                  linear-gradient(180deg, #050915 0%, #0b1223 55%, #050915 100%);
       color: var(--text);
       min-height: 100vh;
+      padding: 22px;
+      overflow-x: hidden;
     }
-    header {
-      padding: 28px 22px 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    .glow::before, .glow::after {
+      content: "";
+      position: absolute;
+      width: 520px; height: 520px;
+      filter: blur(120px);
+      opacity: 0.32;
     }
-    .title { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
-    main {
-      padding: 0 22px 30px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px;
-    }
-    .card {
-      background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-    }
-    .card h3 { margin: 0 0 10px; font-size: 16px; letter-spacing: 0.3px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
-    input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
-    input:focus { outline: 1px solid var(--accent); }
-    .row { display: flex; gap: 8px; align-items: center; }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.08s ease, box-shadow 0.18s ease;
-    }
-    button:active { transform: translateY(1px); }
-    .primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0b131d; }
-    .ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #fecdd3; }
-    .pill { padding: 8px 12px; border-radius: 999px; font-size: 13px; }
-    .status-line { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
-    .dot.running { background: var(--accent); box-shadow: 0 0 0 6px rgba(34,197,94,0.12); }
+    .glow::before { background: #7c3aed; top: -140px; left: -120px; }
+    .glow::after { background: #22c55e; bottom: -160px; right: -120px; }
+    .container { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #22c55e); display: grid; place-items: center; color: #fff; font-weight: 800; box-shadow: var(--shadow); }
+    .title-wrap .title { font-size: 22px; font-weight: 800; letter-spacing: 0.4px; }
+    .title-wrap .subtitle { color: var(--muted); font-size: 13px; }
+    .chip { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 13px; display: inline-flex; gap: 8px; align-items: center; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 0 rgba(124,58,237,0.2); transition: box-shadow 0.3s; }
+    .dot.running { background: var(--accent-2); box-shadow: 0 0 0 6px rgba(34,197,94,0.18); }
     .dot.stopped { background: var(--danger); }
-    progress { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: var(--card); }
-    progress::-webkit-progress-bar { background: var(--card); }
-    progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
-    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .history-table th, .history-table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; }
-    .history-table th { color: var(--muted); font-weight: 600; }
-    .tag { padding: 4px 8px; border-radius: 8px; font-size: 12px; display: inline-block; }
-    .tag.success { background: rgba(34,197,94,0.12); color: #bbf7d0; }
-    .tag.failed { background: rgba(239,68,68,0.12); color: #fecdd3; }
-    .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; margin-top: 10px; }
-    .cell { padding-top: 100%; position: relative; border-radius: 6px; border: 1px solid var(--border); }
-    .cell div { position: absolute; inset: 0; border-radius: 6px; }
-    .legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 12px; }
-    .legend span { display: inline-flex; align-items: center; gap: 4px; }
-    .legend .box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border); display: inline-block; }
-    .muted { color: var(--muted); }
-    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 10px 0 18px; }
-    @media (max-width: 720px) {
-      main { grid-template-columns: 1fr; }
+    .grid { display: grid; gap: 14px; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .hero { display: grid; grid-template-columns: 1.2fr 0.9fr 1fr; gap: 14px; align-items: center; }
+    .hero h1 { margin: 0; font-size: 42px; letter-spacing: 2px; }
+    .label { color: var(--muted); font-size: 13px; letter-spacing: 0.4px; text-transform: uppercase; }
+    .progress-ring { width: 220px; height: 220px; position: relative; }
+    .progress-ring svg { transform: rotate(-90deg); }
+    .progress-ring .value { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; font-weight: 700; }
+    .progress-ring .mini { font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { border: none; border-radius: 12px; padding: 11px 14px; font-weight: 700; cursor: pointer; color: #0b1120; transition: transform 0.12s ease, box-shadow 0.2s ease; }
+    button:active { transform: translateY(1px); }
+    .primary { background: linear-gradient(135deg, #22c55e, #10b981); box-shadow: 0 12px 35px rgba(34,197,94,0.35); }
+    .ghost { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); }
+    .danger { background: linear-gradient(135deg, #ef4444, #f97316); color: #fff; box-shadow: 0 12px 35px rgba(239,68,68,0.3); }
+    .config form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; letter-spacing: 0.3px; }
+    input { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); }
+    input:focus { outline: 1px solid var(--accent-3); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+    .stat .value { font-size: 22px; font-weight: 800; }
+    .stat .muted { color: var(--muted); }
+    .pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 5px; margin-top: 12px; }
+    .cell { position: relative; border-radius: 8px; padding-top: 100%; overflow: hidden; border: 1px solid var(--border); }
+    .cell div { position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); transition: transform 0.1s; }
+    .cell:hover div { transform: translateY(-2px); }
+    .legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend .box { width: 16px; height: 16px; border-radius: 6px; border: 1px solid var(--border); }
+    .timeline { margin-top: 10px; max-height: 260px; overflow-y: auto; padding-left: 6px; }
+    .timeline-item { position: relative; padding: 10px 10px 10px 16px; border-left: 2px solid var(--border); margin-left: 6px; }
+    .timeline-item::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--border); position: absolute; left: -6px; top: 14px; border: 2px solid var(--card); }
+    .timeline-item.success::before { background: var(--accent-2); box-shadow: 0 0 0 6px rgba(34,197,94,0.12); }
+    .timeline-item.failed::before { background: var(--danger); box-shadow: 0 0 0 6px rgba(239,68,68,0.12); }
+    .timeline .time { color: var(--muted); font-size: 12px; }
+    .timeline .url { font-size: 13px; }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    .table th, .table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    .table th { color: var(--muted); font-weight: 600; }
+    .tag { padding: 5px 8px; border-radius: 8px; font-size: 12px; display: inline-block; }
+    .tag.success { background: rgba(34,197,94,0.14); color: #bbf7d0; }
+    .tag.failed { background: rgba(239,68,68,0.16); color: #fecdd3; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0 10px; }
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
       .heatmap { grid-template-columns: repeat(12, 1fr); }
+    }
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      header { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <div class="title">🚀 Reminder Web</div>
-      <div class="subtitle">渐进间隔提醒 · 本地服务 · 前后端分离</div>
-    </div>
-    <div class="subtitle" id="status-line">状态：待机中</div>
-  </header>
-  <main>
-    <section class="card">
-      <h3>配置</h3>
-      <div class="grid-2">
+  <div class="glow"></div>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">R</div>
+        <div class="title-wrap">
+          <div class="title">Reminder Web</div>
+          <div class="subtitle">渐进提醒 · 本地服务 · 深色视觉</div>
+        </div>
+      </div>
+      <div class="chip"><span id="status-dot" class="dot"></span><span id="status-chip">待机中</span></div>
+    </header>
+
+    <section class="card hero">
+      <div>
+        <div class="label">下次提醒</div>
+        <h1 id="hero-next">--:--</h1>
+        <div class="label" id="status-text">待机中</div>
+        <div style="margin-top:12px; color: var(--muted);">累计用时 <span id="hero-elapsed">0:00 / 0:00</span></div>
+      </div>
+      <div class="progress-ring">
+        <svg width="220" height="220">
+          <circle cx="110" cy="110" r="90" stroke="rgba(255,255,255,0.06)" stroke-width="14" fill="none" />
+          <circle id="ring-progress" cx="110" cy="110" r="90" stroke="url(#grad)" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="565" stroke-dashoffset="565" />
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#22c55e" />
+              <stop offset="100%" stop-color="#7c3aed" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="value">
+          <div id="progress-text">0%</div>
+          <div class="mini">进度</div>
+        </div>
+      </div>
+      <div>
+        <div class="actions">
+          <button class="primary" onclick="start()">启动</button>
+          <button class="danger" onclick="stop()">停止</button>
+          <button class="ghost" onclick="saveConfig()">保存配置</button>
+        </div>
+        <div style="margin-top:12px; color: var(--muted); font-size: 13px;">浏览器将由本机后端打开；音效依赖 pygame。</div>
+      </div>
+    </section>
+
+    <section class="card config">
+      <div class="pill">配置中心</div>
+      <form>
         <div>
           <label>目标网址</label>
           <input id="url" type="text" placeholder="https://..." />
@@ -119,70 +178,81 @@
           <label>总时长（分钟）</label>
           <input id="total" type="number" min="1" />
         </div>
-        <div class="row" style="gap:12px;">
-          <div style="flex:1;">
-            <label>第1次（分）</label>
-            <input id="first" type="number" min="1" />
-          </div>
-          <div style="flex:1;">
-            <label>第2次（分）</label>
-            <input id="second" type="number" min="1" />
-          </div>
-          <div style="flex:1;">
-            <label>后续（分）</label>
-            <input id="subseq" type="number" min="1" />
+        <div>
+          <label>第1次（分）</label>
+          <input id="first" type="number" min="1" />
+        </div>
+        <div>
+          <label>第2次（分）</label>
+          <input id="second" type="number" min="1" />
+        </div>
+        <div>
+          <label>后续（分）</label>
+          <input id="subseq" type="number" min="1" />
+        </div>
+        <div>
+          <label>音效开关</label>
+          <div class="actions" style="gap:8px; padding:4px 0;">
+            <label style="color:var(--text); display:flex; align-items:center; gap:8px;"><input id="sound-enabled" type="checkbox" checked /> 启用音效</label>
+            <input id="sound-file" type="text" placeholder="默认音效" />
           </div>
         </div>
-        <div class="row" style="align-items:center; gap:10px;">
-          <label style="margin:0;">音效</label>
-          <input id="sound-enabled" type="checkbox" checked />
-          <input id="sound-file" type="text" placeholder="默认音效" style="flex:1;" />
-          <button class="ghost" onclick="testSound()">测试</button>
-        </div>
+      </form>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">已提醒</div>
+        <div class="value" id="stat-count">0 次</div>
+        <div class="muted" id="stat-last">最近：--</div>
       </div>
-      <div class="row" style="margin-top:12px; gap:10px;">
-        <button class="primary" onclick="start()">启动</button>
-        <button class="danger" onclick="stop()">停止</button>
-        <button class="ghost" onclick="saveConfig()">保存配置</button>
+      <div class="stat">
+        <div class="label">今日活跃</div>
+        <div class="value" id="stat-today">0 次</div>
+        <div class="muted">今日触发次数</div>
+      </div>
+      <div class="stat">
+        <div class="label">进度</div>
+        <div class="value" id="stat-progress">0%</div>
+        <div class="muted">当前周期</div>
+      </div>
+      <div class="stat">
+        <div class="label">成功率</div>
+        <div class="value" id="stat-success">--</div>
+        <div class="muted">基于最近记录</div>
       </div>
     </section>
+
+    <div class="grid grid-2">
+      <section class="card">
+        <div class="pill">今日 24 小时热力</div>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="legend" id="legend"></div>
+      </section>
+      <section class="card">
+        <div class="pill">历史时间线</div>
+        <div class="timeline" id="timeline"></div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="ghost" onclick="refreshHistory()">刷新</button>
+          <button class="danger" onclick="clearHistory()">清空</button>
+        </div>
+      </section>
+    </div>
 
     <section class="card">
-      <h3>运行状态</h3>
-      <div class="status-line">
-        <div id="dot" class="dot"></div>
-        <div id="status">待机中</div>
-      </div>
-      <div class="muted" id="next">下次提醒：--:--</div>
-      <div class="muted" id="elapsed">已用时：0:00 / 0:00</div>
-      <div class="muted" id="count">已提醒：0 次</div>
-      <progress id="progress" value="0" max="100"></progress>
-    </section>
-
-    <section class="card">
-      <h3>今日 24 小时热力</h3>
-      <div class="heatmap" id="heatmap"></div>
-      <div class="legend" id="legend"></div>
-    </section>
-
-    <section class="card" style="grid-column: span 2;">
-      <div class="row" style="justify-content: space-between; align-items: center;">
-        <h3 style="margin:0;">历史记录</h3>
-        <div class="row" style="gap:8px;">
-          <button class="ghost pill" onclick="refreshHistory()">刷新</button>
-          <button class="danger pill" onclick="clearHistory()">清空</button>
-        </div>
-      </div>
-      <table class="history-table" id="history">
+      <div class="pill">历史表格</div>
+      <table class="table" id="history">
         <thead><tr><th>时间</th><th>状态/链接</th></tr></thead>
         <tbody></tbody>
       </table>
     </section>
-  </main>
-  <footer>本地运行 · 打开浏览器并播放音效需允许相关权限</footer>
+
+    <footer>本地运行 · 需要浏览器弹窗与系统声音权限</footer>
+  </div>
 
   <script>
     const palette = ["#1f2937","#164e3b","#15803d","#22c55e","#4ade80"];
+    let lastRecords = [];
 
     async function api(path, options={}) {
       const res = await fetch(path, {
@@ -205,10 +275,7 @@
     }
 
     async function loadConfig() {
-      try {
-        const cfg = await api('/api/config');
-        fillConfig(cfg);
-      } catch (e) { console.error(e); }
+      try { const cfg = await api('/api/config'); fillConfig(cfg); } catch (e) { console.error(e); }
     }
 
     function collectConfig() {
@@ -225,18 +292,13 @@
     }
 
     async function saveConfig() {
-      try {
-        await api('/api/config', { method:'POST', body: JSON.stringify(collectConfig()) });
-        toast('配置已保存');
-      } catch (e) { toast('保存失败: '+e.message, true); }
+      try { await api('/api/config', { method:'POST', body: JSON.stringify(collectConfig()) }); toast('配置已保存'); }
+      catch (e) { toast('保存失败: '+e.message, true); }
     }
 
     async function start() {
-      try {
-        await api('/api/start', { method:'POST', body: JSON.stringify(collectConfig()) });
-        toast('已启动');
-        pollStatus();
-      } catch (e) { toast('启动失败: '+e.message, true); }
+      try { await api('/api/start', { method:'POST', body: JSON.stringify(collectConfig()) }); toast('已启动'); pollStatus(); }
+      catch (e) { toast('启动失败: '+e.message, true); }
     }
 
     async function stop() {
@@ -244,33 +306,14 @@
       catch (e) { toast('停止失败: '+e.message, true); }
     }
 
-    async function testSound() {
-      toast('测试音效在后端播放（需允许系统声音）');
-      try { await api('/api/start', { method:'POST', body: JSON.stringify({...collectConfig(), total_min:1, first_min:1, second_min:1, subseq_min:1}) }); } catch {}
-    }
-
     async function refreshHistory() {
       try {
         const data = await api('/api/history');
-        const tbody = document.querySelector('#history tbody');
-        tbody.innerHTML = '';
-        const records = (data.records || []).slice(-50).reverse();
-        records.forEach(r => {
-          const tr = document.createElement('tr');
-          const ts = document.createElement('td');
-          ts.textContent = formatTs(r.timestamp);
-          const status = document.createElement('td');
-          const tag = document.createElement('span');
-          tag.className = 'tag ' + (r.status === 'success' ? 'success' : 'failed');
-          tag.textContent = r.status === 'success' ? '成功' : '失败';
-          status.appendChild(tag);
-          const text = document.createElement('span');
-          text.textContent = ' ' + (r.url || '');
-          status.appendChild(text);
-          tr.appendChild(ts); tr.appendChild(status);
-          tbody.appendChild(tr);
-        });
-        drawHeatmap(records);
+        lastRecords = data.records || [];
+        renderHistoryTable(lastRecords);
+        renderTimeline(lastRecords.slice(-15).reverse());
+        drawHeatmap(lastRecords);
+        updateStatsFromHistory(lastRecords);
       } catch (e) { console.error(e); }
     }
 
@@ -278,6 +321,35 @@
       if (!confirm('确定清空所有记录？')) return;
       await api('/api/history/clear', { method:'POST' });
       refreshHistory();
+    }
+
+    function renderHistoryTable(records) {
+      const tbody = document.querySelector('#history tbody');
+      tbody.innerHTML = '';
+      (records || []).slice(-80).reverse().forEach(r => {
+        const tr = document.createElement('tr');
+        const ts = document.createElement('td'); ts.textContent = formatTs(r.timestamp);
+        const status = document.createElement('td');
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + (r.status === 'success' ? 'success' : 'failed');
+        tag.textContent = r.status === 'success' ? '成功' : '失败';
+        status.appendChild(tag);
+        const text = document.createElement('span'); text.textContent = ' ' + (r.url || '');
+        status.appendChild(text);
+        tr.appendChild(ts); tr.appendChild(status); tbody.appendChild(tr);
+      });
+    }
+
+    function renderTimeline(records) {
+      const container = document.getElementById('timeline');
+      container.innerHTML = '';
+      records.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'timeline-item ' + (r.status === 'success' ? 'success' : 'failed');
+        const time = document.createElement('div'); time.className = 'time'; time.textContent = formatTs(r.timestamp);
+        const url = document.createElement('div'); url.className = 'url'; url.textContent = r.url || '提醒已触发';
+        item.appendChild(time); item.appendChild(url); container.appendChild(item);
+      });
     }
 
     function formatTs(ts) {
@@ -293,53 +365,55 @@
       const counts = Array(24).fill(0);
       const today = new Date();
       const sameDay = (d) => d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
-      (records || []).forEach(r => {
-        const d = new Date(r.timestamp);
-        if (!isNaN(d) && sameDay(d)) counts[d.getHours()] += 1;
-      });
-      const colorFor = (c) => {
-        if (c===0) return palette[0];
-        if (c===1) return palette[1];
-        if (c<=3) return palette[2];
-        if (c<=6) return palette[3];
-        return palette[4];
-      };
+      (records || []).forEach(r => { const d = new Date(r.timestamp); if (!isNaN(d) && sameDay(d)) counts[d.getHours()] += 1; });
+      const colorFor = (c) => { if (c===0) return palette[0]; if (c===1) return palette[1]; if (c<=3) return palette[2]; if (c<=6) return palette[3]; return palette[4]; };
       counts.forEach((c,i)=>{
-        const cell = document.createElement('div');
-        cell.className = 'cell';
+        const cell = document.createElement('div'); cell.className = 'cell';
         const inner = document.createElement('div');
-        inner.style.background = colorFor(c);
+        inner.style.background = `linear-gradient(180deg, ${colorFor(c)}, ${palette[0]})`;
         cell.appendChild(inner);
-        cell.title = `${i}:00  - 次数 ${c}`;
+        cell.title = `${i}:00  次数 ${c}`;
         container.appendChild(cell);
       });
-      const legend = document.getElementById('legend');
-      legend.innerHTML = '';
+      const legend = document.getElementById('legend'); legend.innerHTML = '';
       [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
         const span = document.createElement('span');
-        const box = document.createElement('span');
-        box.className = 'box';
-        box.style.background = colorFor(val);
-        span.appendChild(box);
-        span.appendChild(document.createTextNode(label));
-        legend.appendChild(span);
+        const box = document.createElement('span'); box.className = 'box'; box.style.background = colorFor(val);
+        span.appendChild(box); span.appendChild(document.createTextNode(label)); legend.appendChild(span);
       });
+    }
+
+    function updateStatsFromHistory(records) {
+      const total = records.length;
+      const success = records.filter(r=>r.status==='success').length;
+      const last = records[records.length - 1];
+      const today = new Date();
+      const todayCount = records.filter(r=>{ const d=new Date(r.timestamp); return !isNaN(d)&&d.toDateString()===today.toDateString(); }).length;
+      document.getElementById('stat-count').textContent = `${(last?.count)||0} 次`;
+      document.getElementById('stat-last').textContent = last ? `最近：${formatTs(last.timestamp)}` : '最近：--';
+      document.getElementById('stat-today').textContent = `${todayCount} 次`;
+      document.getElementById('stat-success').textContent = total ? `${Math.round((success/total)*100)}%` : '--';
     }
 
     async function pollStatus() {
       try {
         const s = await api('/api/status');
-        document.getElementById('status').textContent = s.status;
-        document.getElementById('status-line').textContent = `状态：${s.status}`;
-        document.getElementById('count').textContent = `已提醒：${s.count} 次`;
-        document.getElementById('progress').value = s.progress || 0;
-        document.getElementById('dot').className = 'dot ' + (s.running ? 'running' : 'stopped');
-        const mmss = (sec)=>{
-          const m = Math.floor(sec/60), s = sec%60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
-        document.getElementById('next').textContent = `下次提醒：${mmss(s.next_in || 0)}`;
-        const total = s.total || 0; const el = s.elapsed || 0;
+        document.getElementById('status-text').textContent = s.status;
+        document.getElementById('status-chip').textContent = s.status;
+        const dot = document.getElementById('status-dot');
+        dot.className = 'dot ' + (s.running ? 'running' : 'stopped');
+        const mmss = (sec)=>{ const m=Math.floor(sec/60), ss=sec%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; };
+        document.getElementById('hero-next').textContent = mmss(s.next_in || 0);
         const fmt = (t)=>{const m=Math.floor(t/60), ss=t%60; return `${m}:${String(ss).padStart(2,'0')}`};
-        document.getElementById('elapsed').textContent = `已用时：${fmt(el)} / ${fmt(total)}`;
+        document.getElementById('hero-elapsed').textContent = `${fmt(s.elapsed||0)} / ${fmt(s.total||0)}`;
+        document.getElementById('stat-progress').textContent = `${s.progress||0}%`;
+        const ring = document.getElementById('ring-progress');
+        const circumference = 2 * Math.PI * 90;
+        const offset = circumference - (s.progress||0)/100 * circumference;
+        ring.setAttribute('stroke-dasharray', circumference);
+        ring.setAttribute('stroke-dashoffset', offset);
+        document.getElementById('progress-text').textContent = `${s.progress||0}%`;
+        document.getElementById('stat-count').textContent = `${s.count||0} 次`;
       } catch (e) { console.error(e); }
     }
 
