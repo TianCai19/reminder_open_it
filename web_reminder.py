@@ -153,6 +153,27 @@ class HistoryManager:
         self.records = []
         self._persist()
 
+    def enrich_missing_intervals(self):
+        """为缺少 expected/actual 的历史补充字段，必要时持久化"""
+        changed = False
+        prev_dt = None
+        for r in self.records:
+            ts = r.get("timestamp")
+            try:
+                dt = datetime.fromisoformat(ts) if ts else None
+            except Exception:
+                dt = None
+            if "expected_sec" not in r:
+                r["expected_sec"] = None
+                changed = True
+            if prev_dt and r.get("actual_sec") is None:
+                r["actual_sec"] = int((dt - prev_dt).total_seconds()) if dt else None
+                changed = True
+            prev_dt = dt or prev_dt
+        if changed:
+            self._persist()
+        return self.records
+
     def _persist(self):
         try:
             with open(self.history_file, "w", encoding="utf-8") as f:
@@ -370,7 +391,8 @@ def status():
 
 @app.get("/api/history")
 def history():
-    return {"records": history_mgr.records[-200:]}
+    records = history_mgr.enrich_missing_intervals()
+    return {"records": records[-200:]}
 
 
 @app.post("/api/history/clear")
