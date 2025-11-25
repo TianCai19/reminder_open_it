@@ -85,6 +85,9 @@
     .stat .value { font-size: 22px; font-weight: 800; }
     .stat .muted { color: var(--muted); }
     .pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .collapse-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .collapse-toggle { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .collapse-content.hidden { display: none; }
     .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 5px; margin-top: 12px; }
     .cell { position: relative; border-radius: 8px; padding-top: 100%; overflow: hidden; border: 1px solid var(--border); }
     .cell div { position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); transition: transform 0.1s; }
@@ -164,40 +167,45 @@
     </section>
 
     <section class="card config">
-      <div class="pill">配置中心</div>
-      <form>
-        <div>
-          <label>目标网址</label>
-          <input id="url" type="text" placeholder="https://..." />
-        </div>
-        <div>
-          <label>浏览器路径（可选）</label>
-          <input id="chrome" type="text" placeholder="/Applications/Google Chrome.app" />
-        </div>
-        <div>
-          <label>总时长（分钟）</label>
-          <input id="total" type="number" min="1" />
-        </div>
-        <div>
-          <label>第1次（分）</label>
-          <input id="first" type="number" min="1" />
-        </div>
-        <div>
-          <label>第2次（分）</label>
-          <input id="second" type="number" min="1" />
-        </div>
-        <div>
-          <label>后续（分）</label>
-          <input id="subseq" type="number" min="1" />
-        </div>
-        <div>
-          <label>音效开关</label>
-          <div class="actions" style="gap:8px; padding:4px 0;">
-            <label style="color:var(--text); display:flex; align-items:center; gap:8px;"><input id="sound-enabled" type="checkbox" checked /> 启用音效</label>
-            <input id="sound-file" type="text" placeholder="默认音效" />
+      <div class="collapse-head">
+        <div class="pill">配置中心</div>
+        <button class="collapse-toggle" id="cfg-toggle" onclick="toggleConfig()">展开配置 ▾</button>
+      </div>
+      <div id="config-body" class="collapse-content hidden">
+        <form>
+          <div>
+            <label>目标网址</label>
+            <input id="url" type="text" placeholder="https://..." />
           </div>
-        </div>
-      </form>
+          <div>
+            <label>浏览器路径（可选）</label>
+            <input id="chrome" type="text" placeholder="/Applications/Google Chrome.app" />
+          </div>
+          <div>
+            <label>总时长（分钟）</label>
+            <input id="total" type="number" min="1" />
+          </div>
+          <div>
+            <label>第1次（分）</label>
+            <input id="first" type="number" min="1" />
+          </div>
+          <div>
+            <label>第2次（分）</label>
+            <input id="second" type="number" min="1" />
+          </div>
+          <div>
+            <label>后续（分）</label>
+            <input id="subseq" type="number" min="1" />
+          </div>
+          <div>
+            <label>音效开关</label>
+            <div class="actions" style="gap:8px; padding:4px 0;">
+              <label style="color:var(--text); display:flex; align-items:center; gap:8px;"><input id="sound-enabled" type="checkbox" checked /> 启用音效</label>
+              <input id="sound-file" type="text" placeholder="默认音效" />
+            </div>
+          </div>
+        </form>
+      </div>
     </section>
 
     <section class="stats">
@@ -427,12 +435,33 @@
       setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.4s'; setTimeout(()=>el.remove(), 400); }, 1400);
     }
 
+    function toggleConfig(force) {
+      const body = document.getElementById('config-body');
+      const btn = document.getElementById('cfg-toggle');
+      const collapsed = force !== undefined ? force : body.classList.contains('hidden');
+      if (collapsed) {
+        body.classList.remove('hidden');
+        btn.textContent = '收起配置 ▴';
+        localStorage.setItem('cfgCollapsed', '0');
+      } else {
+        body.classList.add('hidden');
+        btn.textContent = '展开配置 ▾';
+        localStorage.setItem('cfgCollapsed', '1');
+      }
+    }
+
     async function init() {
       await loadConfig();
       await refreshHistory();
       pollStatus();
       setInterval(pollStatus, 1200);
       setInterval(refreshHistory, 8000);
+      const saved = localStorage.getItem('cfgCollapsed');
+      if (saved === null || saved === '1') {
+        toggleConfig(false); // keep hidden by default
+      } else {
+        toggleConfig(true);
+      }
     }
     init();
   </script>
