@@ -56,6 +56,7 @@ class ReminderConfig(BaseModel):
     chrome_path: str = ""
     sound_enabled: bool = True
     sound_file: str = ""
+    expectation: str = ""
 
     @validator("url")
     def validate_url(cls, v):
@@ -216,6 +217,7 @@ class ReminderEngine:
         self.stop_event = threading.Event()
         self.worker: Optional[threading.Thread] = None
         self.last_expected = None
+        self.current_expectation = ""
 
     def start(self, cfg: ReminderConfig):
         with self.lock:
@@ -231,6 +233,7 @@ class ReminderEngine:
             self.chrome_path = cfg.chrome_path.strip()
             self.sound_enabled = cfg.sound_enabled
             self.sound_file = cfg.sound_file.strip()
+            self.current_expectation = cfg.expectation.strip()
             self.stop_event.clear()
             self.status_msg = "运行中"
             # 浏览器实例
@@ -343,6 +346,7 @@ class ReminderEngine:
             "note": "",
             "expected_sec": self.last_expected if self.last_expected else None,
             "actual_sec": actual_sec,
+            "expectation": self.current_expectation,
         }
         self.history.add(entry)
 
