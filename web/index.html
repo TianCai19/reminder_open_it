@@ -94,6 +94,8 @@
     .cell { position: relative; border-radius: 8px; padding-top: 100%; overflow: hidden; border: 1px solid var(--border); }
     .cell div { position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); transition: transform 0.1s; }
     .cell:hover div { transform: translateY(-2px); }
+    .heat-labels { display: grid; grid-template-columns: repeat(24, 1fr); gap: 5px; margin-top: 6px; color: var(--muted); font-size: 11px; text-align: center; }
+    .heat-labels.hide { display: none; }
     .legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend .box { width: 16px; height: 16px; border-radius: 6px; border: 1px solid var(--border); }
@@ -245,6 +247,7 @@
           <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('month')">月</button>
         </div>
         <div class="heatmap" id="heatmap"></div>
+        <div class="heat-labels hide" id="heat-labels"></div>
         <div class="legend" id="legend"></div>
       </section>
       <section class="card">
@@ -399,6 +402,9 @@
       container.innerHTML = '';
       container.classList.remove('week','month');
       const legend = document.getElementById('legend'); legend.innerHTML = '';
+      const labels = document.getElementById('heat-labels');
+      labels.innerHTML = '';
+      labels.classList.add('hide');
 
       const colorFor = (c) => { if (c===0) return palette[0]; if (c===1) return palette[1]; if (c<=3) return palette[2]; if (c<=6) return palette[3]; return palette[4]; };
 
@@ -419,6 +425,8 @@
           cell.title = `${h}:00  次数 ${c}`;
           container.appendChild(cell);
         });
+        order.forEach((h)=>{ const span=document.createElement('div'); span.textContent = `${h}`; labels.appendChild(span); });
+        labels.classList.remove('hide');
         [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
           const span = document.createElement('span');
           const box = document.createElement('span'); box.className = 'box'; box.style.background = colorFor(val);
