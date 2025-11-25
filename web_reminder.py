@@ -291,12 +291,24 @@ class ReminderEngine:
             }
 
     def _record_history(self, success=True):
+        now = datetime.now()
+        actual_sec = None
+        if self.history.records:
+            prev = self.history.records[-1].get("timestamp")
+            try:
+                prev_dt = datetime.fromisoformat(prev)
+                actual_sec = int((now - prev_dt).total_seconds())
+            except Exception:
+                actual_sec = None
+
         entry = {
-            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "timestamp": now.isoformat(timespec="seconds"),
             "count": self.count,
             "url": self.url,
             "status": "success" if success else "failed",
             "note": "",
+            "expected_sec": self.pending_wait if self.pending_wait else None,
+            "actual_sec": actual_sec,
         }
         self.history.add(entry)
 
