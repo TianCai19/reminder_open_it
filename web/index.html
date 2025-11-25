@@ -477,7 +477,7 @@
       dot.className = 'dot running';
       chip.appendChild(dot);
       const text = document.createElement('span');
-      text.textContent = `区间 预期 ${fmtSeconds(exp||0)} / 实际 ${fmtSeconds(act)}`;
+      text.textContent = `区间 预期 ${fmtSeconds(exp)} / 实际 ${fmtSeconds(act)}`;
       chip.appendChild(text);
       return chip;
     }
