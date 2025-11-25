@@ -246,11 +246,12 @@
     <div class="grid grid-2">
       <section class="card">
         <div class="pill">今日 24 小时热力</div>
-        <div class="actions" style="gap:6px; margin-top:8px; flex-wrap:wrap;">
-          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('day')">日</button>
-          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('week')">周</button>
-          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('month')">月</button>
-        </div>
+      <div class="actions" style="gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('day')">日</button>
+        <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('week')">周</button>
+        <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('month')">月</button>
+        <button class="ghost" style="padding:6px 10px;" onclick="callLLM()">AI 鼓励</button>
+      </div>
         <div class="heatmap" id="heatmap"></div>
         <div class="heat-labels hide" id="heat-labels"></div>
         <div class="legend" id="legend"></div>
@@ -281,6 +282,7 @@
     let lastRecords = [];
     let lastPromptCount = null;
     let heatmapMode = 'day';
+    let aiMessageEl;
 
     async function api(path, options={}) {
       const res = await fetch(path, {
@@ -586,16 +588,6 @@
       } catch (e) { toast('更新失败: '+e.message, true); }
     }
 
-    function toast(msg, danger=false) {
-      const el = document.createElement('div');
-      el.textContent = msg;
-      el.style.position='fixed'; el.style.bottom='20px'; el.style.right='20px'; el.style.padding='10px 14px';
-      el.style.background = danger ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)';
-      el.style.color = '#0b131d'; el.style.borderRadius='10px'; el.style.boxShadow='0 10px 30px rgba(0,0,0,0.35)';
-      document.body.appendChild(el);
-      setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.4s'; setTimeout(()=>el.remove(), 400); }, 1400);
-    }
-
     function toggleConfig(force) {
       const body = document.getElementById('config-body');
       const btn = document.getElementById('cfg-toggle');
@@ -625,6 +617,33 @@
       }
     }
     init();
+
+    async function callLLM() {
+      try {
+        const res = await api('/api/llm/encourage');
+        const msg = res.message || '暂无回复';
+        toast('AI 已生成鼓励');
+        if (!aiMessageEl) {
+          aiMessageEl = document.createElement('div');
+          aiMessageEl.style.marginTop='8px';
+          aiMessageEl.style.color='#fbbf24';
+          document.getElementById('heatmap').parentElement.appendChild(aiMessageEl);
+        }
+        aiMessageEl.textContent = 'AI：' + msg;
+      } catch (e) {
+        toast('AI 调用失败: '+e.message, true);
+      }
+    }
+
+    function toast(msg, danger=false) {
+      const el = document.createElement('div');
+      el.textContent = msg;
+      el.style.position='fixed'; el.style.bottom='20px'; el.style.right='20px'; el.style.padding='10px 14px';
+      el.style.background = danger ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)';
+      el.style.color = '#0b131d'; el.style.borderRadius='10px'; el.style.boxShadow='0 10px 30px rgba(0,0,0,0.35)';
+      document.body.appendChild(el);
+      setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.4s'; setTimeout(()=>el.remove(), 400); }, 1400);
+    }
   </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ Web 重构版：后端 FastAPI 负责计时与触发提醒，前端纯 HTML/JS �
 - 音效/浏览：`webbrowser` 打开 URL；`pygame.mixer` 播放音效（后台线程避免阻塞）。
 - 持久化：`config.json` 与 `history.json` 读写，最大 500 条历史保留。
 - 前端：`web/index.html`，纯原生 HTML/CSS/JS，深色渐变 UI，启动/停止、配置、状态、今日 24h 热力格子、历史表格、清空/刷新操作。
+- AI 鼓励（可选）：集成 OpenRouter（GPT-5 Mini 等），基于最近记录生成一句鼓励。需要本地配置 API Key。
 
 ## 快速开始
 ```bash
@@ -28,6 +29,12 @@ python web_reminder.py                         # 启动本地服务，默认 htt
 - `web/index.html`：前端页面与交互逻辑。
 - `config.json` / `history.json`：运行时生成/更新的配置与历史（已列入 .gitignore）。
 - 其他分支：`main`（Tk/ttk 版），`pyqt-rewrite`（PyQt 版）。
+- `openrouter.key.example`：OpenRouter Key 示例；实际 Key 放 `openrouter.key`（已忽略）或环境变量。
+
+## 可选：启用 OpenRouter AI 鼓励
+- 安装依赖已包含 `openai`。
+- 将 API Key 写入同级的 `openrouter.key`（文件已被忽略），或导出 `OPENROUTER_API_KEY` 环境变量。
+- 默认模型 `openai/gpt-5-mini`，可在后端调整；前端有“AI 鼓励”按钮调用 `/api/llm/encourage`。
 
 ## 架构权衡
 - Web 版：UI 自由度高、易扩展为多端访问；需本地服务常驻，浏览器自动开新页可能受弹窗策略限制。

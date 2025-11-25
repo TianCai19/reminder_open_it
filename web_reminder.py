@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
+from openai import OpenAI
 
 # 音效支持
 try:
@@ -34,6 +35,7 @@ except Exception:
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "web"
 DEFAULT_INDEX = STATIC_DIR / "index.html"
+OPENROUTER_KEY_FILE = BASE_DIR / "openrouter.key"
 
 DEFAULTS = {
     "url": "https://www.notion.so/",
@@ -68,6 +70,51 @@ class ReminderConfig(BaseModel):
 class NotePayload(BaseModel):
     note: str = Field("", max_length=2000)
     timestamp: Optional[str] = None
+
+
+class LLMManager:
+    def __init__(self):
+        self.client = None
+        self.model = "openai/gpt-5-mini"
+        self._init_client()
+
+    def _init_client(self):
+        key = os.getenv("OPENROUTER_API_KEY")
+        if not key and OPENROUTER_KEY_FILE.exists():
+            key = OPENROUTER_KEY_FILE.read_text().strip()
+        if not key:
+            return
+        try:
+            self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+        except Exception:
+            self.client = None
+
+    def encourage(self, history_records):
+        if not self.client:
+            raise RuntimeError("缺少 OpenRouter API Key")
+        recent = history_records[-5:]
+        summary_lines = []
+        for r in recent:
+            ts = r.get("timestamp")
+            note = r.get("note") or ""
+            exp = r.get("expectation") or ""
+            status = r.get("status")
+            summary_lines.append(f"- [{ts}] 状态:{status} 预期:{exp} 备注:{note}")
+        prompt = (
+            "你是一个友好的提醒助手，请基于最近的提醒记录，给用户一句鼓励或打气，保持中文简短积极。"
+            "\n最近记录：\n" + "\n".join(summary_lines)
+        )
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "你是一个简短积极的鼓励助手。"},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            raise RuntimeError(f"调用 LLM 失败: {e}")
 
 
 class SoundManager:
@@ -356,6 +403,7 @@ config_mgr = ConfigManager()
 history_mgr = HistoryManager()
 sound_mgr = SoundManager()
 engine = ReminderEngine(history_mgr, sound_mgr)
+llm_mgr = LLMManager()
 
 app = FastAPI(title="Reminder Web")
 app.add_middleware(
@@ -431,6 +479,15 @@ def add_note(payload: NotePayload):
         raise HTTPException(status_code=400, detail="暂无提醒记录可添加备注")
     updated = history_mgr.update_last_note(note)
     return {"ok": True, "record": updated}
+
+
+@app.get("/api/llm/encourage")
+def llm_encourage():
+    try:
+        message = llm_mgr.encourage(history_mgr.records)
+        return {"ok": True, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/")

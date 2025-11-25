@@ -14,6 +14,7 @@ ttkthemes>=3.2.2
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
+openai>=1.50.2
 
 # 打包工具
 pyinstaller>=5.10.1

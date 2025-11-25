@@ -23,6 +23,8 @@ logs/
 *.seed
 *.pid.lock
 history.json
+config.json
+openrouter.key
 
 # 依赖目录
 node_modules/
