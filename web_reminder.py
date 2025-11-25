@@ -205,6 +205,7 @@ class ReminderEngine:
         self.status_msg = "待机中"
         self.stop_event = threading.Event()
         self.worker: Optional[threading.Thread] = None
+        self.last_expected = None
 
     def start(self, cfg: ReminderConfig):
         with self.lock:
@@ -229,6 +230,7 @@ class ReminderEngine:
                     self.browser = webbrowser.get(self.chrome_path)
                 except Exception:
                     self.browser = None
+            self.last_expected = None
 
             # 启动线程
             self.worker = threading.Thread(target=self._run_loop, daemon=True)
@@ -288,6 +290,7 @@ class ReminderEngine:
             return
 
         self.pending_wait = wait
+        self.last_expected = wait
         self.seconds_until_next = wait
         self._update_progress()
 
@@ -328,7 +331,7 @@ class ReminderEngine:
             "url": self.url,
             "status": "success" if success else "failed",
             "note": "",
-            "expected_sec": self.pending_wait if self.pending_wait else None,
+            "expected_sec": self.last_expected if self.last_expected else None,
             "actual_sec": actual_sec,
         }
         self.history.add(entry)
