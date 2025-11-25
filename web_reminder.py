@@ -66,6 +66,7 @@ class ReminderConfig(BaseModel):
 
 class NotePayload(BaseModel):
     note: str = Field("", max_length=2000)
+    timestamp: Optional[str] = None
 
 
 class SoundManager:
@@ -148,6 +149,14 @@ class HistoryManager:
         self.records[-1]["note"] = note
         self._persist()
         return self.records[-1]
+
+    def update_note_by_timestamp(self, timestamp: str, note: str):
+        for r in reversed(self.records):
+            if r.get("timestamp") == timestamp:
+                r["note"] = note
+                self._persist()
+                return r
+        return None
 
     def clear(self):
         self.records = []
@@ -407,9 +416,16 @@ def clear_history():
 
 @app.post("/api/history/note")
 def add_note(payload: NotePayload):
+    note = payload.note.strip()
+    if payload.timestamp:
+        updated = history_mgr.update_note_by_timestamp(payload.timestamp, note)
+        if not updated:
+            raise HTTPException(status_code=404, detail="未找到该时间戳的记录")
+        return {"ok": True, "record": updated}
+    # 默认更新最新一条
     if not history_mgr.records:
         raise HTTPException(status_code=400, detail="暂无提醒记录可添加备注")
-    updated = history_mgr.update_last_note(payload.note.strip())
+    updated = history_mgr.update_last_note(note)
     return {"ok": True, "record": updated}
 
 
