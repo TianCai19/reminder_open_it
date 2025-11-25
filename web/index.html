@@ -89,6 +89,8 @@
     .collapse-toggle { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 10px; cursor: pointer; font-weight: 600; }
     .collapse-content.hidden { display: none; }
     .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 5px; margin-top: 12px; }
+    .heatmap.week { grid-template-columns: repeat(7, 1fr); }
+    .heatmap.month { grid-template-columns: repeat(7, 1fr); }
     .cell { position: relative; border-radius: 8px; padding-top: 100%; overflow: hidden; border: 1px solid var(--border); }
     .cell div { position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); transition: transform 0.1s; }
     .cell:hover div { transform: translateY(-2px); }
@@ -237,6 +239,11 @@
     <div class="grid grid-2">
       <section class="card">
         <div class="pill">今日 24 小时热力</div>
+        <div class="actions" style="gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('day')">日</button>
+          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('week')">周</button>
+          <button class="ghost" style="padding:6px 10px;" onclick="setHeatmapMode('month')">月</button>
+        </div>
         <div class="heatmap" id="heatmap"></div>
         <div class="legend" id="legend"></div>
       </section>
@@ -265,6 +272,7 @@
     const palette = ["#1f2937","#164e3b","#15803d","#22c55e","#4ade80"];
     let lastRecords = [];
     let lastPromptCount = null;
+    let heatmapMode = 'day';
 
     async function api(path, options={}) {
       const res = await fetch(path, {
@@ -389,25 +397,73 @@
     function drawHeatmap(records) {
       const container = document.getElementById('heatmap');
       container.innerHTML = '';
-      const counts = Array(24).fill(0);
-      const today = new Date();
-      const sameDay = (d) => d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
-      (records || []).forEach(r => { const d = new Date(r.timestamp); if (!isNaN(d) && sameDay(d)) counts[d.getHours()] += 1; });
-      const colorFor = (c) => { if (c===0) return palette[0]; if (c===1) return palette[1]; if (c<=3) return palette[2]; if (c<=6) return palette[3]; return palette[4]; };
-      counts.forEach((c,i)=>{
-        const cell = document.createElement('div'); cell.className = 'cell';
-        const inner = document.createElement('div');
-        inner.style.background = `linear-gradient(180deg, ${colorFor(c)}, ${palette[0]})`;
-        cell.appendChild(inner);
-        cell.title = `${i}:00  次数 ${c}`;
-        container.appendChild(cell);
-      });
+      container.classList.remove('week','month');
       const legend = document.getElementById('legend'); legend.innerHTML = '';
-      [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
-        const span = document.createElement('span');
-        const box = document.createElement('span'); box.className = 'box'; box.style.background = colorFor(val);
-        span.appendChild(box); span.appendChild(document.createTextNode(label)); legend.appendChild(span);
-      });
+
+      const colorFor = (c) => { if (c===0) return palette[0]; if (c===1) return palette[1]; if (c<=3) return palette[2]; if (c<=6) return palette[3]; return palette[4]; };
+
+      if (heatmapMode === 'day') {
+        const hours = [...Array(16).keys()].map(i=>i+8); // 8-23
+        const wrap = [0,1];
+        const order = [...hours, ...wrap];
+        const counts = order.map(()=>0);
+        const today = new Date();
+        const sameDay = (d) => d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+        (records || []).forEach(r => { const d = new Date(r.timestamp); if (!isNaN(d) && sameDay(d)) { const h=d.getHours(); const idx=order.indexOf(h); if (idx>=0) counts[idx]+=1; } });
+        order.forEach((h,idx)=>{
+          const c = counts[idx];
+          const cell = document.createElement('div'); cell.className = 'cell';
+          const inner = document.createElement('div');
+          inner.style.background = `linear-gradient(180deg, ${colorFor(c)}, ${palette[0]})`;
+          cell.appendChild(inner);
+          cell.title = `${h}:00  次数 ${c}`;
+          container.appendChild(cell);
+        });
+        [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
+          const span = document.createElement('span');
+          const box = document.createElement('span'); box.className = 'box'; box.style.background = colorFor(val);
+          span.appendChild(box); span.appendChild(document.createTextNode(label)); legend.appendChild(span);
+        });
+      } else if (heatmapMode === 'week') {
+        container.classList.add('week');
+        const today = new Date();
+        const start = new Date(today); start.setDate(today.getDate() - 6);
+        const days = [];
+        for (let i=0;i<7;i++){ const d=new Date(start); d.setDate(start.getDate()+i); days.push(d); }
+        const counts = days.map(()=>0);
+        (records||[]).forEach(r=>{ const d=new Date(r.timestamp); if (isNaN(d)) return; days.forEach((day,idx)=>{ if (d.toDateString()===day.toDateString()) counts[idx]+=1; }); });
+        counts.forEach((c,idx)=>{
+          const cell=document.createElement('div'); cell.className='cell';
+          const inner=document.createElement('div'); inner.style.background=colorFor(c); cell.appendChild(inner);
+          cell.title=`${days[idx].toLocaleDateString()} 次数 ${c}`;
+          container.appendChild(cell);
+        });
+        [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
+          const span = document.createElement('span'); const box=document.createElement('span'); box.className='box'; box.style.background=colorFor(val); span.appendChild(box); span.appendChild(document.createTextNode(label)); legend.appendChild(span);
+        });
+      } else if (heatmapMode === 'month') {
+        container.classList.add('month');
+        const today = new Date();
+        const start = new Date(today); start.setDate(today.getDate() - 29);
+        const days = [];
+        for (let i=0;i<30;i++){ const d=new Date(start); d.setDate(start.getDate()+i); days.push(d); }
+        const counts = days.map(()=>0);
+        (records||[]).forEach(r=>{ const d=new Date(r.timestamp); if (isNaN(d)) return; days.forEach((day,idx)=>{ if (d.toDateString()===day.toDateString()) counts[idx]+=1; }); });
+        days.forEach((d,idx)=>{
+          const cell=document.createElement('div'); cell.className='cell';
+          const inner=document.createElement('div'); inner.style.background=colorFor(counts[idx]); cell.appendChild(inner);
+          cell.title=`${d.toLocaleDateString()} 次数 ${counts[idx]}`;
+          container.appendChild(cell);
+        });
+        [["0",0],["1",1],["2-3",2],["4-6",4],["7+",7]].forEach(([label,val])=>{
+          const span=document.createElement('span'); const box=document.createElement('span'); box.className='box'; box.style.background=colorFor(val); span.appendChild(box); span.appendChild(document.createTextNode(label)); legend.appendChild(span);
+        });
+      }
+    }
+
+    function setHeatmapMode(mode) {
+      heatmapMode = mode;
+      drawHeatmap(lastRecords);
     }
 
     function updateStatsFromHistory(records) {

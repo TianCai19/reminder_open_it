@@ -163,10 +163,11 @@ class HistoryManager:
                 dt = datetime.fromisoformat(ts) if ts else None
             except Exception:
                 dt = None
-            if "expected_sec" not in r:
-                r["expected_sec"] = None
+            if "expected_sec" not in r or r.get("expected_sec") is None:
+                # 缺失预期时，给一个默认 10 分钟，避免前端空白
+                r["expected_sec"] = 10 * 60
                 changed = True
-            if prev_dt and r.get("actual_sec") is None:
+            if prev_dt and (r.get("actual_sec") is None or r.get("actual_sec") == ""):
                 r["actual_sec"] = int((dt - prev_dt).total_seconds()) if dt else None
                 changed = True
             prev_dt = dt or prev_dt
