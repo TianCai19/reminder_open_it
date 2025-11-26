@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Assistant</title>
+  <style>
+    :root {
+      --bg: #050915;
+      --card: rgba(12, 17, 31, 0.82);
+      --border: rgba(255,255,255,0.08);
+      --accent: #22c55e;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+    }
+    body { margin:0; font-family: "Inter","Segoe UI",system-ui,-apple-system,sans-serif; background: radial-gradient(circle at 20% 20%, rgba(124,58,237,0.15), transparent 30%), radial-gradient(circle at 80% 0%, rgba(34,197,94,0.15), transparent 25%), var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .card { background: var(--card); border:1px solid var(--border); border-radius: 16px; padding:16px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+    h1 { margin:0 0 10px; }
+    label { color: var(--muted); font-size: 13px; }
+    select, textarea, input { width: 100%; padding: 10px 12px; border-radius: 12px; border:1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); }
+    textarea { min-height: 100px; }
+    button { border:none; border-radius: 10px; padding:10px 14px; cursor: pointer; font-weight:700; }
+    .primary { background: linear-gradient(135deg, #22c55e, #10b981); color:#0b1120; }
+    .ghost { background: rgba(255,255,255,0.06); color: var(--text); border:1px solid var(--border); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .chat-box { margin-top: 14px; border:1px solid var(--border); border-radius: 12px; padding: 10px; max-height: 480px; overflow-y: auto; }
+    .msg { margin: 6px 0; }
+    .msg .role { font-size: 12px; color: var(--muted); }
+    pre { white-space: pre-wrap; word-break: break-word; background: rgba(255,255,255,0.04); padding:10px; border-radius: 10px; }
+    .meta { color: var(--muted); font-size: 12px; margin-top:6px; }
+    .link { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>LLM 助手</h1>
+      <div class="row">
+        <div style="flex:1; min-width:180px;">
+          <label>模型</label>
+          <select id="model">
+            <option value="openai/gpt-5-mini">openai/gpt-5-mini</option>
+            <option value="openai/gpt-5-nano">openai/gpt-5-nano</option>
+            <option value="qwen/qwen-plus">qwen/qwen-plus</option>
+            <option value="qwen/qwen-turbo">qwen/qwen-turbo</option>
+            <option value="z-ai/glm-4.6">z-ai/glm-4.6</option>
+            <option value="z-ai/glm-4-flash">z-ai/glm-4-flash</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:180px;">
+          <label>时间范围</label>
+          <select id="timeframe">
+            <option value="day">今日</option>
+            <option value="week">最近7天</option>
+            <option value="month">最近30天</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:180px;">
+          <label>提示类型</label>
+          <select id="prompt_type">
+            <option value="summary">总结 + 鼓励</option>
+            <option value="reflection">反思</option>
+            <option value="advice">建议</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label>提问</label>
+        <textarea id="user-input" placeholder="输入你的问题或想聊的内容..."></textarea>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" onclick="send()">发送</button>
+        <button class="ghost" onclick="showPrompt()">查看上下文提示</button>
+        <a class="link" href="/">返回主界面</a>
+      </div>
+      <div class="chat-box" id="chat-box"></div>
+      <div class="meta" id="usage"></div>
+      <pre id="prompt-view" style="display:none;"></pre>
+    </div>
+  </div>
+
+  <script>
+    let messages = [{role:'system', content:'你是一个友好的助手。'}];
+    let lastPrompt = '';
+
+    async function api(path, options={}) {
+      const res = await fetch(path, {headers:{'Content-Type':'application/json'}, ...options});
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function appendMessage(role, content) {
+      const box = document.getElementById('chat-box');
+      const wrap = document.createElement('div');
+      wrap.className='msg';
+      const r = document.createElement('div'); r.className='role'; r.textContent = role;
+      const c = document.createElement('div'); c.textContent = content;
+      wrap.appendChild(r); wrap.appendChild(c);
+      box.appendChild(wrap);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function send() {
+      const input = document.getElementById('user-input');
+      const content = input.value.trim();
+      if (!content) return;
+      messages.push({role:'user', content});
+      appendMessage('你', content);
+      input.value='';
+      try {
+        const payload = {
+          messages: messages,
+          timeframe: document.getElementById('timeframe').value,
+          prompt_type: document.getElementById('prompt_type').value,
+          model: document.getElementById('model').value
+        };
+        const res = await api('/api/llm/chat', {method:'POST', body: JSON.stringify(payload)});
+        lastPrompt = res.prompt || '';
+        appendMessage('AI', res.message || '（无回复）');
+        messages.push({role:'assistant', content: res.message});
+        document.getElementById('usage').textContent = res.usage ? JSON.stringify(res.usage) : '';
+      } catch (e) {
+        appendMessage('AI', '调用失败：' + e.message);
+      }
+    }
+
+    function showPrompt() {
+      const el = document.getElementById('prompt-view');
+      if (!lastPrompt) { el.style.display='block'; el.textContent='暂无上下文'; return; }
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      el.textContent = lastPrompt;
+    }
+  </script>
+</body>
+</html>

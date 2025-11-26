@@ -35,6 +35,7 @@ python web_reminder.py                         # 启动本地服务，默认 htt
 - 安装依赖已包含 `openai`。
 - 将 API Key 写入同级的 `openrouter.key`（文件已被忽略），或导出 `OPENROUTER_API_KEY` 环境变量。
 - 默认模型 `openai/gpt-5-mini`，可在后端调整；前端有“AI 鼓励”按钮调用 `/api/llm/encourage`。
+- 专属聊天助手：访问 `/chat.html`，可选择模型、时间范围（日/周/月上下文）、提示模板（总结/反思/建议）、查看完整上下文 prompt 与 token usage。
 
 ## 架构权衡
 - Web 版：UI 自由度高、易扩展为多端访问；需本地服务常驻，浏览器自动开新页可能受弹窗策略限制。

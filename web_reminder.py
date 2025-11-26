@@ -15,7 +15,7 @@ import webbrowser
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -72,26 +72,49 @@ class NotePayload(BaseModel):
     timestamp: Optional[str] = None
 
 
+class ChatPayload(BaseModel):
+    messages: List[Dict[str, str]]
+    timeframe: str = "day"  # day/week/month
+    prompt_type: str = "summary"  # summary/reflection/advice
+    model: str = "openai/gpt-5-mini"
+
+
 class LLMManager:
     def __init__(self):
-        self.client = None
+        self.client: Optional[OpenAI] = None
         self.model = "openai/gpt-5-mini"
-        self._init_client()
+        self._last_key: Optional[str] = None
+        self._init_client(force=True)
 
-    def _init_client(self):
+    def _read_key(self) -> Optional[str]:
         key = os.getenv("OPENROUTER_API_KEY")
         if not key and OPENROUTER_KEY_FILE.exists():
             key = OPENROUTER_KEY_FILE.read_text().strip()
-        if not key:
-            return
-        try:
-            self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
-        except Exception:
-            self.client = None
+        return key or None
 
-    def encourage(self, history_records):
+    def _init_client(self, force=False):
+        key = self._read_key()
+        if not key:
+            self.client = None
+            self._last_key = None
+            return
+        if force or key != self._last_key:
+            try:
+                self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+                self._last_key = key
+            except Exception:
+                self.client = None
+                self._last_key = None
+
+    def _get_client(self) -> OpenAI:
+        if not self.client:
+            self._init_client(force=True)
         if not self.client:
             raise RuntimeError("缺少 OpenRouter API Key")
+        return self.client
+
+    def encourage(self, history_records):
+        client = self._get_client()
         recent = history_records[-5:]
         summary_lines = []
         for r in recent:
@@ -105,7 +128,7 @@ class LLMManager:
             "\n最近记录：\n" + "\n".join(summary_lines)
         )
         try:
-            completion = self.client.chat.completions.create(
+            completion = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "你是一个简短积极的鼓励助手。"},
@@ -113,6 +136,29 @@ class LLMManager:
                 ],
             )
             return completion.choices[0].message.content
+        except Exception as e:
+            raise RuntimeError(f"调用 LLM 失败: {e}")
+
+    def chat(self, payload: ChatPayload, context: str):
+        client = self._get_client()
+        base = {
+            "summary": "请结合提供的上下文，总结用户的进展，并给出一句鼓励，保持简短。",
+            "reflection": "请结合提供的上下文，帮助用户进行反思：哪些做得好，哪些可改进，用中文简短列出。",
+            "advice": "请结合提供的上下文，给出下一步建议，列出 2-3 条中文要点，简短。",
+        }
+        system_prompt = base.get(payload.prompt_type, base["summary"])
+        full_prompt = f"{system_prompt}\n\n上下文：\n{context}"
+        try:
+            completion = client.chat.completions.create(
+                model=payload.model or self.model,
+                messages=[{"role": "system", "content": system_prompt}] + payload.messages,
+            )
+            usage = getattr(completion, "usage", None)
+            return {
+                "message": completion.choices[0].message.content,
+                "usage": usage.model_dump() if usage else None,
+                "prompt": full_prompt,
+            }
         except Exception as e:
             raise RuntimeError(f"调用 LLM 失败: {e}")
 
@@ -479,6 +525,41 @@ def add_note(payload: NotePayload):
         raise HTTPException(status_code=400, detail="暂无提醒记录可添加备注")
     updated = history_mgr.update_last_note(note)
     return {"ok": True, "record": updated}
+
+
+def _context_by_timeframe(records, timeframe: str):
+    today = datetime.now().date()
+    if timeframe == "day":
+        days = 0
+    elif timeframe == "week":
+        days = 6
+    else:
+        days = 29
+    start = today - timedelta(days=days)
+    filtered = []
+    for r in records:
+        try:
+            dt = datetime.fromisoformat(r.get("timestamp"))
+        except Exception:
+            continue
+        if dt.date() >= start:
+            filtered.append(r)
+    lines = []
+    for r in filtered[-50:]:
+        lines.append(
+            f"[{r.get('timestamp')}] 状态:{r.get('status')} 预期:{r.get('expectation','')} 备注:{r.get('note','')}"
+        )
+    return "\n".join(lines) or "暂无上下文"
+
+
+@app.post("/api/llm/chat")
+def llm_chat(payload: ChatPayload):
+    try:
+        context = _context_by_timeframe(history_mgr.records, payload.timeframe)
+        result = llm_mgr.chat(payload, context)
+        return {"ok": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/llm/encourage")
