@@ -286,6 +286,7 @@
     let lastPromptCount = null;
     let heatmapMode = 'day';
     let aiMessageEl;
+    let aiHolder;
 
     async function api(path, options={}) {
       const res = await fetch(path, {
@@ -626,11 +627,16 @@
         const res = await api('/api/llm/encourage');
         const msg = res.message || '暂无回复';
         toast('AI 已生成鼓励');
+        if (!aiHolder) {
+          aiHolder = document.createElement('div');
+          aiHolder.style.marginTop='8px';
+          aiHolder.style.color='#fbbf24';
+          aiHolder.style.fontSize='13px';
+          document.getElementById('heatmap').parentElement.appendChild(aiHolder);
+        }
         if (!aiMessageEl) {
           aiMessageEl = document.createElement('div');
-          aiMessageEl.style.marginTop='8px';
-          aiMessageEl.style.color='#fbbf24';
-          document.getElementById('heatmap').parentElement.appendChild(aiMessageEl);
+          aiHolder.appendChild(aiMessageEl);
         }
         aiMessageEl.textContent = 'AI：' + msg;
       } catch (e) {

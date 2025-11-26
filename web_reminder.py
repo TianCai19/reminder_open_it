@@ -575,6 +575,13 @@ def llm_encourage():
 def index():
     return FileResponse(DEFAULT_INDEX)
 
+@app.get("/chat.html")
+def chat_page():
+    chat_file = STATIC_DIR / "chat.html"
+    if chat_file.exists():
+        return FileResponse(chat_file)
+    raise HTTPException(status_code=404, detail="chat.html not found")
+
 
 app.mount("/web", StaticFiles(directory=STATIC_DIR), name="web")
 
