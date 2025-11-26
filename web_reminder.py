@@ -89,7 +89,13 @@ class LLMManager:
     def _read_key(self) -> Optional[str]:
         key = os.getenv("OPENROUTER_API_KEY")
         if not key and OPENROUTER_KEY_FILE.exists():
-            key = OPENROUTER_KEY_FILE.read_text().strip()
+            lines = OPENROUTER_KEY_FILE.read_text().splitlines()
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                key = line
+                break
         return key or None
 
     def _init_client(self, force=False):
