@@ -20,8 +20,8 @@ Web 重构版：后端 FastAPI 负责计时与触发提醒，前端纯 HTML/JS �
 ## 快速开始
 ```bash
 pip install -r requirements.txt                # 安装依赖（FastAPI + uvicorn + pygame 等）
-python web_reminder.py                         # 启动本地服务，默认 http://localhost:8000
-# 浏览器打开 http://localhost:8000 即可操作
+APP_PORT=8765 python web_reminder.py           # 启动本地服务，默认 http://localhost:8765
+# 浏览器打开 http://localhost:8765 即可操作
 ```
 
 ## 文件结构
@@ -30,6 +30,7 @@ python web_reminder.py                         # 启动本地服务，默认 htt
 - `config.json` / `history.json`：运行时生成/更新的配置与历史（已列入 .gitignore）。
 - 其他分支：`main`（Tk/ttk 版），`pyqt-rewrite`（PyQt 版）。
 - `openrouter.key.example`：OpenRouter Key 示例；实际 Key 放 `openrouter.key`（已忽略）或环境变量。
+- `start_app.py`：本地一键启动（含自动打开浏览器），用于打包为 macOS .app 的入口。
 
 ## 可选：启用 OpenRouter AI 鼓励
 - 安装依赖已包含 `openai`。
@@ -41,6 +42,15 @@ python web_reminder.py                         # 启动本地服务，默认 htt
 - Web 版：UI 自由度高、易扩展为多端访问；需本地服务常驻，浏览器自动开新页可能受弹窗策略限制。
 - Tk/ttk：轻量、零外部依赖，原生外观朴素；复杂动画/布局受限。
 - PyQt：外观现代、控件丰富、可自绘；依赖体积较大、学习/打包成本略高。
+
+## 打包为 macOS 应用（示例）
+- 入口：`start_app.py`（内部启动 uvicorn 绑定 127.0.0.1:8765 并自动打开浏览器）。
+- 推荐 PyInstaller 命令：
+  ```
+  pyinstaller --noconfirm --windowed --name ReminderWeb \\
+    --add-data \"web/*:web\" start_app.py
+  ```
+  打包后 `dist/ReminderWeb.app` 可直接使用。实际 key 放 `openrouter.key` 或环境变量，不要打进 .app。
 
 ## 部署与纯前端的区别
 - 本方案的“后端”是本机常驻的 FastAPI 进程，负责计时/打开浏览器/播放音效/读写历史；前端只是调用这些 API。没有这个后端，浏览器无法在你的电脑上打开应用或播放本地音效。

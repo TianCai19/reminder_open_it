@@ -36,6 +36,7 @@ BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "web"
 DEFAULT_INDEX = STATIC_DIR / "index.html"
 OPENROUTER_KEY_FILE = BASE_DIR / "openrouter.key"
+DEFAULT_PORT = int(os.getenv("APP_PORT", "8765"))
 
 DEFAULTS = {
     "url": "https://www.notion.so/",
@@ -605,7 +606,7 @@ def main():
     uvicorn.run(
         "web_reminder:app",
         host="0.0.0.0",
-        port=8000,
+        port=DEFAULT_PORT,
         reload=False,
     )
 
