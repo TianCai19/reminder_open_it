@@ -153,17 +153,24 @@ class LLMManager:
             "advice": "请结合提供的上下文，给出下一步建议，列出 2-3 条中文要点，简短。",
         }
         system_prompt = base.get(payload.prompt_type, base["summary"])
-        full_prompt = f"{system_prompt}\n\n上下文：\n{context}"
+        context_text = f"上下文（最近记录）：\n{context}"
+        # 拼出发送给模型的消息列表
+        assembled = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": context_text},
+        ] + payload.messages
+        # 便于前端显示的完整 prompt 文本
+        prompt_view = "\n\n".join([f"{m['role']}: {m['content']}" for m in assembled])
         try:
             completion = client.chat.completions.create(
                 model=payload.model or self.model,
-                messages=[{"role": "system", "content": system_prompt}] + payload.messages,
+                messages=assembled,
             )
             usage = getattr(completion, "usage", None)
             return {
                 "message": completion.choices[0].message.content,
                 "usage": usage.model_dump() if usage else None,
-                "prompt": full_prompt,
+                "prompt": prompt_view,
             }
         except Exception as e:
             raise RuntimeError(f"调用 LLM 失败: {e}")
